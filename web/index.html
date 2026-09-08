@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MetaSuite — Eventos recibidos</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #0b0f19; color: #e2e8f0; padding: 24px; line-height: 1.5; }
+    h1 { font-size: 1.4rem; margin-bottom: 4px; }
+    .sub { color: #94a3b8; font-size: 0.85rem; margin-bottom: 24px; }
+    .controls { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+    button { background: #3b82f6; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+    button:hover { background: #2563eb; }
+    .badge { background: #1e293b; color: #94a3b8; padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; }
+    .badge.ok { background: #065f46; color: #a7f3d0; }
+    .badge.err { background: #7f1d1d; color: #fecaca; }
+    .badge.dup { background: #713f12; color: #fde68a; }
+    table { width: 100%; border-collapse: collapse; background: #151e2e; border-radius: 8px; overflow: hidden; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #1e293b; font-size: 0.85rem; }
+    th { background: #1e293b; font-weight: 600; color: #cbd5e1; }
+    td code { background: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; color: #93c5fd; }
+    .empty { text-align: center; padding: 32px; color: #64748b; }
+    details { margin-top: 4px; }
+    details summary { cursor: pointer; color: #60a5fa; font-size: 0.75rem; }
+    pre { background: #0f172a; padding: 8px; border-radius: 4px; margin-top: 4px; font-size: 0.72rem; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>MetaSuite</h1>
+  <p class="sub" id="health-line">Cargando estado…</p>
+
+  <div class="controls">
+    <button onclick="load()">↻ Refrescar</button>
+    <label style="font-size:0.8rem;">
+      <input type="checkbox" id="auto" checked> Auto (5s)
+    </label>
+    <span id="last-update" class="badge"></span>
+  </div>
+
+  <table id="events-table">
+    <thead>
+      <tr>
+        <th>Recibido</th>
+        <th>Tipo</th>
+        <th>Instance</th>
+        <th>event_id</th>
+        <th>Estado</th>
+        <th>Payload</th>
+      </tr>
+    </thead>
+    <tbody id="events-body">
+      <tr><td colspan="6" class="empty">Cargando…</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    async function loadHealth() {
+      try {
+        const r = await fetch('/health');
+        const j = await r.json();
+        document.getElementById('health-line').textContent =
+          `API ${j.ok ? '🟢 up' : '🔴 down'} · Postgres ${j.ok ? 'conectado' : 'sin conexión'} · ${j.ts}`;
+      } catch {
+        document.getElementById('health-line').textContent = 'API 🔴 sin respuesta';
+      }
+    }
+
+    async function loadEvents() {
+      const tbody = document.getElementById('events-body');
+      try {
+        const r = await fetch('/api/events?limit=50');
+        const { events } = await r.json();
+        if (!events.length) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty">Sin eventos recibidos todavía. Cuando Spoter empiece a mandar webhooks aparecen acá.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = events.map(e => {
+          const status = e.processed_at ? 'ok' : (e.error ? 'err' : 'pending');
+          const badge = status === 'ok' ? '<span class="badge ok">procesado</span>'
+                      : status === 'err' ? `<span class="badge err">error (${e.attempts})</span>`
+                      : '<span class="badge">pendiente</span>';
+          return `
+            <tr>
+              <td>${new Date(e.received_at).toLocaleString('es-AR')}</td>
+              <td><strong>${e.event_type}</strong></td>
+              <td>${e.client_id ?? '<em>—</em>'}</td>
+              <td><code>${e.event_id.substring(0, 12)}…</code></td>
+              <td>${badge}</td>
+              <td>
+                <details>
+                  <summary>ver</summary>
+                  <pre>${JSON.stringify(e.payload, null, 2)}</pre>
+                </details>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty">Error cargando eventos: ${err.message}</td></tr>`;
+      }
+    }
+
+    async function load() {
+      await Promise.all([loadHealth(), loadEvents()]);
+      document.getElementById('last-update').textContent = 'actualizado ' + new Date().toLocaleTimeString('es-AR');
+    }
+
+    load();
+    setInterval(() => {
+      if (document.getElementById('auto').checked) load();
+    }, 5000);
+  </script>
+</body>
+</html>

@@ -1,6 +1,11 @@
 import Fastify from 'fastify';
+import fastifyStatic from '@fastify/static';
 import crypto from 'node:crypto';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { sql, health } from '../lib/db.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const PORT = Number(process.env.PORT || 3000);
 const BEARER = process.env.SPOTER_TO_METASUITE_BEARER;
@@ -38,6 +43,25 @@ function safeEqual(a, b) {
 fastify.get('/health', async () => {
   const ok = await health();
   return { ok, ts: new Date().toISOString() };
+});
+
+// Front estático: sirve web/index.html en /
+await fastify.register(fastifyStatic, {
+  root: path.join(__dirname, '..', 'web'),
+  prefix: '/',
+});
+
+// Últimos eventos recibidos (para el dashboard mínimo).
+// ponytail: sin auth por ahora. Poner basic_auth en Caddy antes de exponer a internet.
+fastify.get('/api/events', async (req) => {
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const events = await sql`
+    SELECT event_id, event_type, client_id, payload, received_at, processed_at, attempts, error
+    FROM inbox_events
+    ORDER BY received_at DESC
+    LIMIT ${limit}
+  `;
+  return { events };
 });
 
 fastify.post('/webhook/conversion', async (req, reply) => {

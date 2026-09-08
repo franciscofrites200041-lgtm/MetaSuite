@@ -9,6 +9,7 @@
     "db:init": "node -e \"import('./lib/db.js').then(m => m.initSchema())\""
   },
   "dependencies": {
+    "@fastify/static": "^8.0.0",
     "fastify": "^5.0.0",
     "postgres": "^3.4.4"
   }

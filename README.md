@@ -8,7 +8,8 @@ Piloto: Surmotors. Docs completos: `../mvp-optimizador-pautas.md`, `../spoter-we
 - ✅ Docker Compose (postgres + api + caddy)
 - ✅ Schema inicial de Postgres (`db/init.sql`, 14 tablas)
 - ✅ Webhook receiver Spoter → MetaSuite con Bearer + HMAC + idempotencia
-- ⏳ Pendiente: poller MCP Meta, workers (decisor/aplicador/generador), frontend
+- ✅ Front mínimo: dashboard de eventos recibidos en `/`
+- ⏳ Pendiente: poller MCP Meta, workers (decisor/aplicador/generador), Explorador de Pauta
 
 ## Arranque local
 
@@ -32,6 +33,21 @@ curl -X POST http://localhost/webhook/conversion \
 ```
 
 Segundo request idéntico → `{"duplicate": true}`.
+
+## Acceder al dashboard
+
+Una vez el stack está arriba, abrir en el navegador:
+
+- **Local (dev)**: http://localhost/
+- **Prod**: https://<DOMAIN>/
+
+El dashboard muestra los últimos 50 eventos recibidos vía webhook, con estado (pendiente / procesado / error) y payload expandible. Auto-refresh cada 5s.
+
+Endpoints:
+- `GET /` → dashboard
+- `GET /health` → healthcheck
+- `GET /api/events?limit=N` → JSON con eventos recientes
+- `POST /webhook/conversion` → receiver (Bearer + HMAC obligatorios)
 
 ## Deploy en Portainer
 
