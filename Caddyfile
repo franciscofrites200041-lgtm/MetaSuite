@@ -1,0 +1,4 @@
+# Cambiar el dominio antes de deployar
+{$DOMAIN:metasuite.local} {
+	reverse_proxy api:3000
+}

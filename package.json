@@ -1,0 +1,15 @@
+{
+  "name": "metasuite",
+  "version": "0.1.0",
+  "description": "Optimizador de pautas Meta + multiplicador de creativas. Piloto Surmotors.",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node api/server.js",
+    "db:init": "node -e \"import('./lib/db.js').then(m => m.initSchema())\""
+  },
+  "dependencies": {
+    "fastify": "^5.0.0",
+    "postgres": "^3.4.4"
+  }
+}
