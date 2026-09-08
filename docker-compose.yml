@@ -24,21 +24,21 @@ services:
         condition: service_healthy
     expose:
       - "3000"
+    networks:
+      - default
+      - proxy   # red compartida con nginx externo
 
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - api
+# ponytail: caddy removido — el nginx externo (Nginx Proxy Manager u otro)
+# hace el reverse proxy y SSL. Si querés volver a Caddy, mirá git history.
 
 volumes:
   pgdata:
-  caddy_data:
-  caddy_config:
+
+networks:
+  default:
+  proxy:
+    external: true
+    # Nombre de la network donde corre tu nginx. Con NPM es típicamente
+    # 'nginx-proxy_default' o el nombre que le hayas puesto al stack.
+    # Ver: `docker network ls` en el VPS y ajustar acá.
+    name: ${PROXY_NETWORK:-nginx-proxy_default}
