@@ -18,7 +18,11 @@ services:
   api:
     build: .
     restart: unless-stopped
-    env_file: .env
+    environment:
+      DATABASE_URL: postgres://metasuite:${POSTGRES_PASSWORD:-changeme}@postgres:5432/metasuite
+      SPOTER_TO_METASUITE_BEARER: ${SPOTER_TO_METASUITE_BEARER}
+      SPOTER_TO_METASUITE_SIGNING_SECRET: ${SPOTER_TO_METASUITE_SIGNING_SECRET}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       postgres:
         condition: service_healthy
