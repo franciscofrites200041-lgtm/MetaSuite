@@ -8,7 +8,7 @@ import { DEFAULT_MODEL_ID } from "@/lib/models";
 
 export const runtime = "nodejs";
 
-type IncomingMessage = { role: "user" | "assistant" | "system" | "tool"; content: string };
+type IncomingMessage = { role: "user" | "assistant" | "system"; content: string };
 
 export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => null)) as {
