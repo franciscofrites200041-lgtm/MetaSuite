@@ -41,16 +41,21 @@ export async function buildCampaignInMeta(supabase: SupabaseClient, input: Build
     .from("objectives")
     .select("publish_mode, company_id, title, companies!inner(account_id)")
     .eq("id", input.objectiveId)
-    .maybeSingle();
+    .maybeSingle<{
+      publish_mode: "auto" | "approval" | null;
+      company_id: string;
+      title: string;
+      companies: { account_id: string } | { account_id: string }[];
+    }>();
   if (!obj) return { ok: false as const, error: "objective_not_found" };
 
+  const accountId = Array.isArray(obj.companies) ? obj.companies[0]?.account_id : obj.companies.account_id;
   const { data: account } = await supabase
     .from("accounts")
     .select("default_publish_mode")
-    .eq("id", (obj as { companies: { account_id: string } }).companies.account_id)
+    .eq("id", accountId)
     .maybeSingle();
-  const publishMode: "auto" | "approval" =
-    (obj as { publish_mode: "auto" | "approval" | null }).publish_mode ?? account?.default_publish_mode ?? "approval";
+  const publishMode: "auto" | "approval" = obj.publish_mode ?? account?.default_publish_mode ?? "approval";
   const metaStatus = publishMode === "auto" ? "ACTIVE" : "PAUSED";
 
   const conn = await getMetaConnection(supabase, input.companyId);
