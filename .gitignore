@@ -1,6 +1,38 @@
+# deps
 node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# next
+.next/
+out/
+build/
+dist/
+
+# vercel
+.vercel
+
+# env
 .env
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# supabase
+supabase/.branches
+supabase/.temp
+
+# ts
+*.tsbuildinfo
+next-env.d.ts
+
+# logs / os
 *.log
 .DS_Store
+Thumbs.db
 data/
+
+# design refs (submodule / sibling repo, not part of MVP source)
+design-refs/
