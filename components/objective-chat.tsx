@@ -1,9 +1,10 @@
 "use client";
 
+import { useChat } from "@ai-sdk/react";
 import { useEffect, useRef, useState } from "react";
 import type { Model } from "@/lib/models";
 
-type Msg = { id: string; role: "user" | "assistant" | "system"; content: string };
+type InitialMsg = { id: string; role: "user" | "assistant" | "system"; content: string };
 
 export function ObjectiveChat({
   threadId,
@@ -14,51 +15,23 @@ export function ObjectiveChat({
   threadId: string;
   initialModelId: string;
   models: Model[];
-  initialMessages: Msg[];
+  initialMessages: InitialMsg[];
 }) {
   const [modelId, setModelId] = useState(initialModelId);
-  const [messages, setMessages] = useState<Msg[]>(initialMessages);
-  const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const { messages, input, handleInputChange, handleSubmit, status } = useChat({
+    api: "/api/chat",
+    id: threadId,
+    initialMessages,
+    body: { threadId, modelId },
+  });
+
+  const busy = status === "streaming" || status === "submitted";
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages.length]);
-
-  async function send() {
-    const text = input.trim();
-    if (!text || sending) return;
-    setSending(true);
-    setInput("");
-    const optimistic: Msg = { id: `tmp-${Date.now()}`, role: "user", content: text };
-    setMessages((m) => [...m, optimistic]);
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ threadId, modelId, content: text }),
-      });
-      const data = await res.json();
-      if (data.userMessage) {
-        setMessages((m) => m.map((x) => (x.id === optimistic.id ? data.userMessage : x)));
-      }
-      if (data.assistantMessage) {
-        setMessages((m) => [...m, data.assistantMessage]);
-      }
-    } catch (err) {
-      setMessages((m) => [
-        ...m,
-        {
-          id: `err-${Date.now()}`,
-          role: "assistant",
-          content: "No pude alcanzar el servicio de IA. Revisá la consola.",
-        },
-      ]);
-    } finally {
-      setSending(false);
-    }
-  }
+  }, [messages.length, status]);
 
   return (
     <>
@@ -89,22 +62,26 @@ export function ObjectiveChat({
         ) : (
           <div className="flex flex-col gap-3 max-w-[720px] mx-auto">
             {messages.map((m) => (
-              <Bubble key={m.id} msg={m} />
+              <Bubble
+                key={m.id}
+                role={m.role as "user" | "assistant" | "system"}
+                content={renderContent(m)}
+              />
             ))}
-            {sending ? <Typing /> : null}
+            {busy && messages[messages.length - 1]?.role !== "assistant" ? <Typing /> : null}
           </div>
         )}
       </div>
 
-      <div className="hairline-t px-8 py-4">
+      <form onSubmit={handleSubmit} className="hairline-t px-8 py-4">
         <div className="max-w-[720px] mx-auto flex gap-2">
           <textarea
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                void send();
+                (e.currentTarget.form as HTMLFormElement).requestSubmit();
               }
             }}
             placeholder="Contale a la IA sobre este objetivo…"
@@ -113,22 +90,40 @@ export function ObjectiveChat({
             style={{ background: "var(--color-surface-2)" }}
           />
           <button
-            type="button"
-            onClick={() => void send()}
-            disabled={sending || !input.trim()}
+            type="submit"
+            disabled={busy || !input.trim()}
             className="rounded-md px-4 text-[13px] font-medium disabled:opacity-50"
             style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
           >
             Enviar
           </button>
         </div>
-      </div>
+      </form>
     </>
   );
 }
 
-function Bubble({ msg }: { msg: Msg }) {
-  const isUser = msg.role === "user";
+/** Extracts the visible text from an AI-SDK message, folding tool calls into a compact note. */
+function renderContent(m: { role: string; content: string; parts?: Array<{ type: string; text?: string; toolName?: string; state?: string }> }): string {
+  if (m.parts && m.parts.length) {
+    return m.parts
+      .map((p) => {
+        if (p.type === "text" && p.text) return p.text;
+        if (p.type === "tool-invocation") {
+          const name = (p as { toolInvocation?: { toolName?: string } }).toolInvocation?.toolName ?? p.toolName ?? "tool";
+          return `↳ ${name}`;
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .join("\n\n");
+  }
+  return m.content ?? "";
+}
+
+function Bubble({ role, content }: { role: "user" | "assistant" | "system"; content: string }) {
+  if (role === "system") return null;
+  const isUser = role === "user";
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
@@ -139,7 +134,7 @@ function Bubble({ msg }: { msg: Msg }) {
           border: "1px solid var(--color-hairline)",
         }}
       >
-        {msg.content}
+        {content}
       </div>
     </div>
   );

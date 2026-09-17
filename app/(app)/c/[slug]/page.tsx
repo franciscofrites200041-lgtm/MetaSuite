@@ -4,10 +4,13 @@ import { supabaseServer } from "@/lib/supabase/server";
 
 export default async function CompanyDashboard({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ meta_error?: string; meta_connected?: string }>;
 }) {
   const { slug } = await params;
+  const sp = await searchParams;
   const supabase = await supabaseServer();
 
   const { data: company } = await supabase
@@ -18,7 +21,11 @@ export default async function CompanyDashboard({
   if (!company) notFound();
 
   const [{ data: metaConn }, { data: objectives }] = await Promise.all([
-    supabase.from("meta_connections").select("id, meta_ad_account_id, status").eq("company_id", company.id).maybeSingle(),
+    supabase
+      .from("meta_connections")
+      .select("id, meta_ad_account_id, meta_page_id, status, token_expires_at")
+      .eq("company_id", company.id)
+      .maybeSingle(),
     supabase
       .from("objectives")
       .select("id, title, status, updated_at")
@@ -31,17 +38,48 @@ export default async function CompanyDashboard({
       <p className="mb-2 text-[11px] tracking-[0.14em] uppercase" style={{ color: "var(--color-ink-subtle)" }}>
         Empresa
       </p>
-      <div className="flex items-baseline justify-between mb-8">
-        <h1
-          className="text-[32px] leading-[1.1] tracking-tight"
-          style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}
-        >
-          {company.name}
-        </h1>
-        <MetaBadge status={metaConn?.status ?? null} adAccount={metaConn?.meta_ad_account_id ?? null} />
+      <div className="flex items-baseline justify-between mb-4">
+        <div className="flex items-baseline gap-4">
+          <h1
+            className="text-[32px] leading-[1.1] tracking-tight"
+            style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}
+          >
+            {company.name}
+          </h1>
+          <Link
+            href={`/app/c/${company.slug}/settings`}
+            className="text-[12px]"
+            style={{ color: "var(--color-ink-subtle)" }}
+          >
+            Ajustes
+          </Link>
+        </div>
+        <MetaBadge companyId={company.id} conn={metaConn} />
       </div>
 
-      {/* Objetivos */}
+      {sp.meta_error ? (
+        <div
+          className="mb-6 hairline rounded-md px-4 py-3 text-[13px]"
+          style={{
+            background: "color-mix(in oklab, var(--color-danger) 8%, var(--color-surface-1))",
+            color: "var(--color-danger)",
+          }}
+        >
+          {sp.meta_error}
+        </div>
+      ) : sp.meta_connected ? (
+        <div
+          className="mb-6 hairline rounded-md px-4 py-3 text-[13px]"
+          style={{
+            background: "color-mix(in oklab, var(--color-success) 8%, var(--color-surface-1))",
+            color: "var(--color-success)",
+          }}
+        >
+          Cuenta Meta conectada.{" "}
+          <span style={{ fontFamily: "var(--font-mono)" }}>{metaConn?.meta_ad_account_id}</span>
+        </div>
+      ) : null}
+
       <div className="hairline rounded-lg" style={{ background: "var(--color-surface-1)" }}>
         <header className="flex items-center justify-between px-6 py-4 hairline-b">
           <h2 className="text-[15px] tracking-tight" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
@@ -87,26 +125,47 @@ export default async function CompanyDashboard({
   );
 }
 
-function MetaBadge({ status, adAccount }: { status: string | null; adAccount: string | null }) {
-  if (!status) {
+function MetaBadge({
+  companyId,
+  conn,
+}: {
+  companyId: string;
+  conn:
+    | {
+        id: string;
+        meta_ad_account_id: string;
+        meta_page_id: string | null;
+        status: string;
+        token_expires_at: string | null;
+      }
+    | null;
+}) {
+  if (!conn) {
     return (
-      <button
-        type="button"
-        className="hairline rounded-md px-3 py-1.5 text-[12px]"
-        style={{ background: "var(--color-surface-2)", color: "var(--color-ink-muted)" }}
-        disabled
-        title="Meta OAuth se cablea en la próxima sesión"
+      <a
+        href={`/api/meta/oauth?company_id=${companyId}`}
+        className="rounded-md px-3 py-1.5 text-[12px] font-medium"
+        style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
       >
         Conectar Meta Ads
-      </button>
+      </a>
     );
   }
   const color =
-    status === "active" ? "var(--color-success)" : status === "expired" ? "var(--color-warning)" : "var(--color-danger)";
+    conn.status === "active" ? "var(--color-success)" : conn.status === "expired" ? "var(--color-warning)" : "var(--color-danger)";
   return (
-    <div className="text-[12px] flex items-center gap-2" style={{ color: "var(--color-ink-muted)" }}>
-      <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: color }} />
-      Meta · <span style={{ fontFamily: "var(--font-mono)" }}>{adAccount}</span>
+    <div className="flex items-center gap-3">
+      <div className="text-[12px] flex items-center gap-2" style={{ color: "var(--color-ink-muted)" }}>
+        <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+        Meta · <span style={{ fontFamily: "var(--font-mono)" }}>{conn.meta_ad_account_id}</span>
+      </div>
+      <a
+        href={`/api/meta/oauth?company_id=${companyId}`}
+        className="hairline rounded-md px-2 py-1 text-[11px]"
+        style={{ background: "var(--color-surface-2)", color: "var(--color-ink-muted)" }}
+      >
+        Reconectar
+      </a>
     </div>
   );
 }

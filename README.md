@@ -38,6 +38,16 @@ Valores mínimos para que el auth ande:
   openssl rand -hex 32
   ```
 
+Para el chat de IA real:
+- `OPENROUTER_API_KEY` — https://openrouter.ai/keys. Sin esto, el chat responde con un stub pidiendo la key.
+
+Para conectar Meta Ads:
+- `META_APP_ID` — App ID de tu Meta App (developers.facebook.com)
+- `META_APP_SECRET` — App Secret (nunca al cliente)
+- `META_OAUTH_REDIRECT_URI` — igual al que registrás en "Valid OAuth Redirect URIs" en la app Meta. Ej: `http://localhost:3000/api/meta/callback`
+
+Alcances (scopes) que el flujo pide: `ads_management ads_read business_management pages_show_list pages_read_engagement pages_manage_ads email public_profile`. Tu app Meta necesita estar en modo Development con vos como tester (o publicada tras App Review para Advanced Access).
+
 ### 3. Migraciones de Supabase
 
 Con Supabase CLI:
@@ -104,23 +114,24 @@ metasuite/
 Sección 2 del spec como norte.
 
 ### ✅ Listo en esta rama
-- Rama `MVP` con scaffold Next.js completo
+- Scaffold Next.js 15 + Tailwind 4 + Supabase SSR
 - Schema Supabase completo con RLS + trigger de onboarding
 - Auth funcional (signup / login / logout / callback)
-- Alta de empresa
-- Alta de objetivo (con brief opcional)
+- Alta y edición de empresa, con upload de logo a Supabase Storage
+- Alta de objetivo (con brief opcional) + settings del objetivo (publish_mode, título)
 - Vista de objetivo con **chat central + brief editable + panels de creativas y campañas**
-- DESIGN.md con paleta hueso/crema + naranja Toruk, Space Grotesk / Inter / JetBrains Mono
-- Selector de modelo (lista curada OpenRouter) en el chat
-- Chat persistente (mensajes se guardan en `chat_messages`, RLS enforced)
+- **Chat streaming real** con OpenRouter (Vercel AI SDK) y selector de modelo curado
+- **Orquestador multi-agente con tool calling** (spec § 6): `save_brief`, `propose_creative`, `approve_creative`, `build_campaign_in_meta`, `pause_or_activate`
+- **Meta OAuth completo**: `/api/meta/oauth` inicia el flujo, `/api/meta/callback` intercambia code → long-lived, obtiene ad accounts y pages, guarda con AES-256-GCM en `meta_connections`
+- **Meta Graph API client** para creación de campaign + ad set, con naming `AUGUR · {title}`
+- **Modo `auto` vs `approval`**: la campaña queda pausada por default. Vista `/app/c/[slug]/campaigns/[id]` con botón "Publicar" que activa campaign + ad_sets en Meta
+- DESIGN.md canvas hueso + naranja Toruk, Space Grotesk / Inter / JetBrains Mono
 
-### ⏳ Próximas sesiones
-- Wiring real de OpenRouter + Vercel AI SDK (streaming, agentes)
-- Orquestación multi-agente (spec § 6): briefing, copywriter, visual, meta-builder
-- OAuth de Meta Ads + `/api/meta/callback` + storage encriptado de tokens
-- MCP Meta Ads — creación de campaign/ad set/ad
-- Modo `auto` vs `approval` en las publicaciones
-- Storage de logos + upload de brief `.md`
+### ⏳ Próximas iteraciones
+- Ad creation en Meta (necesita media upload / IG post reference) — hoy los ads quedan como drafts DB
+- Multi-ad-account picker en el callback (hoy toma el primero)
+- Reconexión automática cuando el token expira
+- Fase 2 del spec: métricas de performance + feedback loop
 
 ## Diseño
 

@@ -13,6 +13,8 @@
     "db:types": "supabase gen types typescript --local > lib/supabase/db.types.ts"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^1.0.0",
+    "@ai-sdk/react": "^1.0.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.4",
     "ai": "^4.0.0",

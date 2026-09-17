@@ -88,10 +88,11 @@ create table if not exists public.meta_connections (
   meta_ad_account_id text not null,
   meta_page_id text,
   meta_business_id text,
-  -- AES-GCM ciphertext, encrypted app-side with META_TOKEN_ENC_KEY.
-  access_token_ciphertext bytea not null,
-  access_token_iv bytea not null,
-  access_token_tag bytea not null,
+  -- AES-256-GCM. All three fields are base64 strings — easier to round-trip
+  -- through PostgREST/Supabase-JS than bytea (which comes back as \x...).
+  access_token_ciphertext text not null,
+  access_token_iv text not null,
+  access_token_tag text not null,
   token_expires_at timestamptz,
   status text not null default 'active' check (status in ('active','expired','revoked','error')),
   last_error text,
