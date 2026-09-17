@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { signInWithPassword } from "../actions";
+import { supabaseEnvOk } from "@/lib/supabase/env";
 
 export default async function LoginPage({
   searchParams,
@@ -7,6 +8,7 @@ export default async function LoginPage({
   searchParams: Promise<{ next?: string; error?: string }>;
 }) {
   const sp = await searchParams;
+  const configured = supabaseEnvOk();
 
   return (
     <div className="hairline rounded-lg p-8" style={{ background: "var(--color-surface-1)" }}>
@@ -16,6 +18,17 @@ export default async function LoginPage({
       <p className="mb-6 text-[13px]" style={{ color: "var(--color-ink-muted)" }}>
         Usá el email con el que te diste de alta.
       </p>
+      {!configured ? (
+        <div
+          className="mb-4 hairline rounded-md px-3 py-2 text-[12px]"
+          style={{
+            background: "color-mix(in oklab, var(--color-warning) 10%, var(--color-surface-2))",
+            color: "var(--color-warning)",
+          }}
+        >
+          Este deploy todavía no tiene Supabase configurado. Estás viendo solo el diseño.
+        </div>
+      ) : null}
       <form action={signInWithPassword} className="flex flex-col gap-4">
         <input type="hidden" name="next" value={sp.next ?? "/app"} />
         <label className="flex flex-col gap-1.5">

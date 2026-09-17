@@ -1,10 +1,15 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { supabaseEnvOk } from "./env";
 
 const PUBLIC_PREFIXES = ["/login", "/signup", "/auth", "/_next", "/favicon", "/api/meta/callback"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
+
+  // Preview / unconfigured deploys: no Supabase env → no auth gating.
+  // Let the pages themselves surface a friendly banner.
+  if (!supabaseEnvOk()) return response;
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
