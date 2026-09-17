@@ -2,7 +2,7 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseEnvOk } from "./env";
 
-const PUBLIC_PREFIXES = ["/login", "/signup", "/auth", "/_next", "/favicon", "/api/meta/callback"];
+const PUBLIC_PREFIXES = ["/login", "/signup", "/auth", "/preview", "/_next", "/favicon", "/api/meta/callback"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
