@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
   // Load thread + objective + company + meta connection for context.
   const { data: thread } = await supabase
     .from("chat_threads")
-    .select("id, objective_id, model_id, objectives!inner(id, title, brief_md, publish_mode, company_id, companies!inner(id, name, industry, description, account_id))")
+    .select("id, objective_id, model_id, objectives!inner(id, title, brief_md, publish_mode, company_id, companies!inner(id, name, industry, description, website_url, account_id))")
     .eq("id", body.threadId)
     .maybeSingle();
   if (!thread) return NextResponse.json({ error: "thread_not_found" }, { status: 404 });
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       brief_md: string;
       publish_mode: "auto" | "approval" | null;
       company_id: string;
-      companies: { id: string; name: string; industry: string | null; description: string | null; account_id: string };
+      companies: { id: string; name: string; industry: string | null; description: string | null; website_url: string | null; account_id: string };
     };
   }).objectives;
 
@@ -86,6 +86,7 @@ export async function POST(request: NextRequest) {
     companyName: objective.companies.name,
     companyIndustry: objective.companies.industry,
     companyDescription: objective.companies.description,
+    companyWebsiteUrl: objective.companies.website_url,
     objectiveTitle: objective.title,
     briefMd: objective.brief_md ?? "",
     publishMode,

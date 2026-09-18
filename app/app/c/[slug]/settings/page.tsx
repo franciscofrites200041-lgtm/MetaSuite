@@ -18,7 +18,7 @@ export default async function CompanySettingsPage({
 
   const { data: company } = await supabase
     .from("companies")
-    .select("id, name, slug, industry, description, logo_url")
+    .select("id, name, slug, industry, description, logo_url, website_url")
     .eq("slug", slug)
     .maybeSingle();
   if (!company) notFound();
@@ -28,13 +28,14 @@ export default async function CompanySettingsPage({
     const name = String(formData.get("name") ?? "").trim();
     const industry = String(formData.get("industry") ?? "").trim() || null;
     const description = String(formData.get("description") ?? "").trim() || null;
+    const websiteUrl = String(formData.get("website_url") ?? "").trim() || null;
     const logoFile = formData.get("logo") as File | null;
 
     const supa = await supabaseServer();
     const { data: comp } = await supa.from("companies").select("id").eq("slug", slug).maybeSingle();
     if (!comp) redirect(`/app/c/${slug}/settings?error=not_found`);
 
-    const patch: Record<string, string | null> = { name, industry, description };
+    const patch: Record<string, string | null> = { name, industry, description, website_url: websiteUrl };
 
     if (logoFile && logoFile.size > 0) {
       if (logoFile.size > 4 * 1024 * 1024) {
@@ -132,6 +133,20 @@ export default async function CompanySettingsPage({
             className="hairline rounded-md px-3 py-2.5 text-[14px] outline-none resize-y"
             style={{ background: "var(--color-surface-2)" }}
           />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-[12px]" style={{ color: "var(--color-ink-muted)" }}>Sitio web</span>
+          <input
+            name="website_url"
+            type="url"
+            placeholder="https://tu-sitio.com"
+            defaultValue={company.website_url ?? ""}
+            className="hairline rounded-md px-3 py-2.5 text-[14px] outline-none"
+            style={{ background: "var(--color-surface-2)" }}
+          />
+          <span className="text-[11px]" style={{ color: "var(--color-ink-subtle)" }}>
+            Obligatorio para publicar ads reales — Meta lo usa como landing en cada anuncio.
+          </span>
         </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[12px]" style={{ color: "var(--color-ink-muted)" }}>Logo</span>

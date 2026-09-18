@@ -1,9 +1,11 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { MODELS, DEFAULT_MODEL_ID } from "@/lib/models";
 import { ObjectiveChat } from "@/components/objective-chat";
+import { uploadCreativeImage } from "./creative-actions";
 
 export default async function ObjectivePage({
   params,
@@ -44,7 +46,7 @@ export default async function ObjectivePage({
 
   const [{ data: messages }, { data: creatives }, { data: campaigns }] = await Promise.all([
     supabase.from("chat_messages").select("id, role, content, created_at").eq("thread_id", thread!.id).order("created_at"),
-    supabase.from("ad_creatives").select("id, copy_text, image_prompt, status").eq("objective_id", objective.id).order("created_at", { ascending: false }),
+    supabase.from("ad_creatives").select("id, copy_text, image_prompt, image_url, meta_image_hash, status").eq("objective_id", objective.id).order("created_at", { ascending: false }),
     supabase.from("campaigns").select("id, name, status, meta_campaign_id").eq("objective_id", objective.id).order("created_at", { ascending: false }),
   ]);
 
@@ -184,14 +186,40 @@ export default async function ObjectivePage({
                   className="hairline rounded-md p-3 text-[13px]"
                   style={{ background: "var(--color-surface-2)" }}
                 >
+                  {c.image_url ? (
+                    <div className="mb-2 rounded-md overflow-hidden hairline">
+                      <Image src={c.image_url} alt="Creative" width={340} height={200} className="w-full h-32 object-cover" unoptimized />
+                    </div>
+                  ) : null}
                   <div className="line-clamp-3">{c.copy_text}</div>
                   {c.image_prompt ? (
                     <div className="mt-2 text-[11px]" style={{ color: "var(--color-ink-subtle)", fontFamily: "var(--font-mono)" }}>
                       🖼 {c.image_prompt.slice(0, 80)}
                     </div>
                   ) : null}
-                  <div className="mt-2 text-[10px] tracking-wider uppercase" style={{ color: "var(--color-ink-tertiary)" }}>
-                    {c.status}
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className="text-[10px] tracking-wider uppercase" style={{ color: "var(--color-ink-tertiary)" }}>
+                      {c.status}{c.image_url ? (c.meta_image_hash ? " · listo Meta" : " · pendiente Meta") : ""}
+                    </span>
+                    <form action={uploadCreativeImage} encType="multipart/form-data" className="flex items-center gap-1">
+                      <input type="hidden" name="creative_id" value={c.id} />
+                      <input type="hidden" name="slug" value={slug} />
+                      <input type="hidden" name="objective_id" value={id} />
+                      <input
+                        name="image"
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        required
+                        className="text-[10px] file:hairline file:rounded-md file:px-2 file:py-1 file:text-[11px] file:mr-2 file:bg-[color:var(--color-canvas)] file:cursor-pointer"
+                      />
+                      <button
+                        type="submit"
+                        className="rounded-md px-2 py-1 text-[11px] font-medium"
+                        style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
+                      >
+                        Subir
+                      </button>
+                    </form>
                   </div>
                 </li>
               ))}

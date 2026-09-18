@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
+import { publishAdInMeta } from "./ad-actions";
 
 export default async function CampaignPage({
   params,
@@ -32,7 +33,7 @@ export default async function CampaignPage({
     supabase.from("ad_sets").select("id, name, status, meta_adset_id, payload").eq("campaign_id", campaign.id),
     supabase
       .from("ads")
-      .select("id, name, status, meta_ad_id, ad_set_id, creative_id, ad_creatives(copy_text, image_prompt)")
+      .select("id, name, status, meta_ad_id, ad_set_id, creative_id, payload, ad_creatives(copy_text, image_prompt, image_url, meta_image_hash)")
       .in("ad_set_id", (await supabase.from("ad_sets").select("id").eq("campaign_id", campaign.id)).data?.map((s) => s.id) ?? []),
   ]);
 
@@ -158,13 +159,15 @@ export default async function CampaignPage({
             Ads
           </h2>
           <span className="text-[11px]" style={{ color: "var(--color-ink-subtle)" }}>
-            La publicación real de cada ad requiere subir la imagen — se cablea en la siguiente iteración.
+            Cada ad se publica cuando su creative tiene imagen y la empresa tiene website URL.
           </span>
         </header>
         {ads && ads.length > 0 ? (
           <ul>
             {ads.map((a, i) => {
-              const creative = (a as unknown as { ad_creatives: { copy_text: string; image_prompt: string | null } | null }).ad_creatives;
+              const creative = (a as unknown as { ad_creatives: { copy_text: string; image_prompt: string | null; image_url: string | null; meta_image_hash: string | null } | null }).ad_creatives;
+              const canPublish = a.status === "draft" && !!creative?.image_url;
+              const err = (a as unknown as { payload: { error?: string } | null }).payload?.error;
               return (
                 <li key={a.id} className={i > 0 ? "hairline-t px-6 py-4" : "px-6 py-4"}>
                   <div className="flex items-start justify-between gap-4">
@@ -175,15 +178,45 @@ export default async function CampaignPage({
                           <p className="mt-2 text-[13px] line-clamp-3" style={{ color: "var(--color-ink-muted)" }}>
                             {creative.copy_text}
                           </p>
-                          {creative.image_prompt ? (
+                          {creative.image_url ? (
                             <p className="mt-1 text-[11px]" style={{ color: "var(--color-ink-subtle)", fontFamily: "var(--font-mono)" }}>
-                              🖼 {creative.image_prompt}
+                              🖼 imagen: {creative.meta_image_hash ? "sincronizada con Meta" : "pendiente de subir a Meta"}
                             </p>
-                          ) : null}
+                          ) : (
+                            <p className="mt-1 text-[11px]" style={{ color: "var(--color-warning)" }}>
+                              Falta subir imagen — hacelo en la vista del objetivo antes de publicar.
+                            </p>
+                          )}
                         </>
                       ) : null}
+                      {err ? (
+                        <p className="mt-2 text-[11px]" style={{ color: "var(--color-danger)" }}>
+                          Meta: {err}
+                        </p>
+                      ) : null}
+                      {a.meta_ad_id ? (
+                        <p className="mt-1 text-[11px]" style={{ color: "var(--color-ink-subtle)", fontFamily: "var(--font-mono)" }}>
+                          meta_ad_id: {a.meta_ad_id}
+                        </p>
+                      ) : null}
                     </div>
-                    <span className="text-[11px]" style={{ color: "var(--color-ink-muted)" }}>{a.status}</span>
+                    <div className="flex flex-col items-end gap-2">
+                      <span className="text-[11px]" style={{ color: "var(--color-ink-muted)" }}>{a.status}</span>
+                      {canPublish ? (
+                        <form action={publishAdInMeta}>
+                          <input type="hidden" name="ad_id" value={a.id} />
+                          <input type="hidden" name="slug" value={slug} />
+                          <input type="hidden" name="campaign_id" value={campaign.id} />
+                          <button
+                            type="submit"
+                            className="rounded-md px-3 py-1.5 text-[12px] font-medium"
+                            style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
+                          >
+                            Publicar ad
+                          </button>
+                        </form>
+                      ) : null}
+                    </div>
                   </div>
                 </li>
               );

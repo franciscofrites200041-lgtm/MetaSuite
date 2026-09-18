@@ -71,6 +71,8 @@ create table if not exists public.companies (
   social_links jsonb not null default '{}'::jsonb,
   description text,
   logo_url text,
+  -- Landing page usada en el link_data de todos los ads de esta empresa.
+  website_url text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (account_id, slug)
@@ -155,6 +157,11 @@ create table if not exists public.ad_creatives (
   objective_id uuid not null references public.objectives(id) on delete cascade,
   copy_text text not null,
   image_prompt text,
+  -- URL pública del asset en Supabase Storage (bucket creative-media).
+  image_url text,
+  -- Hash devuelto por Meta cuando se registra la imagen en la ad account.
+  -- Cache: si cambia image_url, se re-sube y se actualiza este hash.
+  meta_image_hash text,
   status text not null default 'draft' check (status in ('draft','approved','used','discarded')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -374,4 +381,8 @@ on conflict (id) do nothing;
 
 insert into storage.buckets (id, name, public)
 values ('briefs', 'briefs', false)
+on conflict (id) do nothing;
+
+insert into storage.buckets (id, name, public)
+values ('creative-media', 'creative-media', true)
 on conflict (id) do nothing;

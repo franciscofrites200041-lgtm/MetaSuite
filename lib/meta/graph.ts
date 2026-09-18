@@ -82,6 +82,62 @@ export async function createCampaign(
   });
 }
 
+/**
+ * Registers an image URL as an ad image in the ad account. Meta downloads the
+ * file and returns a hash we then reference in ad creatives. Requires the
+ * image URL to be publicly reachable — we host on Supabase Storage.
+ */
+export async function createAdImage(
+  conn: MetaConn,
+  imageUrl: string
+): Promise<GraphResponse<{ hash: string }>> {
+  const res = await graphPost<{ images: Record<string, { hash: string }> }>(
+    `/act_${conn.ad_account_id}/adimages`,
+    conn.access_token,
+    { url: imageUrl }
+  );
+  if (!res.ok) return res;
+  const first = Object.values(res.data.images)[0];
+  if (!first?.hash) return { ok: false, error: "no_hash_returned" };
+  return { ok: true, data: { hash: first.hash } };
+}
+
+/**
+ * Creates an ad creative on the ad account using an existing image_hash.
+ * Requires page_id + link. Uses LINK_DATA (single image + link) creative type.
+ */
+export async function createAdCreative(
+  conn: MetaConn,
+  input: { name: string; page_id: string; image_hash: string; message: string; link: string; call_to_action?: string }
+): Promise<GraphResponse<{ id: string }>> {
+  const objectStorySpec = {
+    page_id: input.page_id,
+    link_data: {
+      message: input.message,
+      link: input.link,
+      image_hash: input.image_hash,
+      call_to_action: input.call_to_action ? { type: input.call_to_action } : undefined,
+    },
+  };
+  return graphPost<{ id: string }>(`/act_${conn.ad_account_id}/adcreatives`, conn.access_token, {
+    name: input.name,
+    object_story_spec: objectStorySpec,
+    degrees_of_freedom_spec: { creative_features_spec: { standard_enhancements: { enroll_status: "OPT_OUT" } } },
+  });
+}
+
+export async function createAd(
+  conn: MetaConn,
+  input: { name: string; adset_id: string; creative_id: string; status: "ACTIVE" | "PAUSED" }
+): Promise<GraphResponse<{ id: string }>> {
+  return graphPost<{ id: string }>(`/act_${conn.ad_account_id}/ads`, conn.access_token, {
+    name: input.name,
+    adset_id: input.adset_id,
+    creative: { creative_id: input.creative_id },
+    status: input.status,
+  });
+}
+
 export async function createAdSet(
   conn: MetaConn,
   input: {
