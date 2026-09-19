@@ -1,6 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Model } from "@/lib/models";
 
@@ -20,6 +21,8 @@ export function ObjectiveChat({
   const [modelId, setModelId] = useState(initialModelId);
   const [modelFilter, setModelFilter] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const seenResults = useRef<Set<string>>(new Set());
 
   const filteredGroups = useMemo(() => {
     const q = modelFilter.trim().toLowerCase();
@@ -53,6 +56,44 @@ export function ObjectiveChat({
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages.length, status]);
+
+  // While the LLM is streaming save_brief's arguments, mirror the growing
+  // brief_md into the right-panel textarea via a window event. This lets the
+  // user watch the brief being written in real time.
+  useEffect(() => {
+    const parts = messages.flatMap((m) => (m as { parts?: unknown[] }).parts ?? []) as Array<{
+      type: string;
+      toolInvocation?: { toolName?: string; state?: string; args?: { brief_md?: string } };
+    }>;
+    const latestBrief = [...parts]
+      .reverse()
+      .find((p) => p.type === "tool-invocation" && p.toolInvocation?.toolName === "save_brief");
+    const brief = latestBrief?.toolInvocation?.args?.brief_md;
+    if (typeof brief === "string" && brief.length > 0) {
+      window.dispatchEvent(new CustomEvent("brief-live", { detail: brief }));
+    }
+  }, [messages]);
+
+  // When any tool call reaches "result" state, refresh the server component so
+  // creatives / campaigns / brief in the right rail sync with the DB. We track
+  // toolCallIds we've already refreshed on so a single result doesn't trigger
+  // repeated refreshes on subsequent renders.
+  useEffect(() => {
+    const parts = messages.flatMap((m) => (m as { parts?: unknown[] }).parts ?? []) as Array<{
+      type: string;
+      toolInvocation?: { toolCallId?: string; state?: string };
+    }>;
+    let hasNew = false;
+    for (const p of parts) {
+      if (p.type !== "tool-invocation") continue;
+      const ti = p.toolInvocation;
+      if (!ti || ti.state !== "result" || !ti.toolCallId) continue;
+      if (seenResults.current.has(ti.toolCallId)) continue;
+      seenResults.current.add(ti.toolCallId);
+      hasNew = true;
+    }
+    if (hasNew) router.refresh();
+  }, [messages, router]);
 
   return (
     <>
@@ -98,13 +139,14 @@ export function ObjectiveChat({
           <EmptyState />
         ) : (
           <div className="flex flex-col gap-3 max-w-[720px] mx-auto">
-            {messages.map((m) => (
-              <Bubble
-                key={m.id}
-                role={m.role as "user" | "assistant" | "system"}
-                content={renderContent(m)}
-              />
-            ))}
+            {messages.map((m) => {
+              const text = renderContent(m as ChatMessage);
+              const invocations = extractToolInvocations(m as ChatMessage);
+              const role = m.role as "user" | "assistant" | "system";
+              return (
+                <MessageBlock key={m.id} role={role} text={text} invocations={invocations} />
+              );
+            })}
             {(() => {
               // Show the thinking indicator whenever the API is busy AND we
               // don't yet have visible assistant text. During tool calls the
@@ -112,7 +154,7 @@ export function ObjectiveChat({
               // — hiding the indicator there is what made the UI look frozen.
               if (!busy) return null;
               const last = messages[messages.length - 1];
-              const hasText = last?.role === "assistant" && renderContent(last).trim().length > 0;
+              const hasText = last?.role === "assistant" && renderContent(last as ChatMessage).trim().length > 0;
               return hasText ? null : <Typing />;
             })()}
           </div>
@@ -149,39 +191,130 @@ export function ObjectiveChat({
   );
 }
 
-/** Extracts the visible text from an AI-SDK message, folding tool calls into a compact note. */
-function renderContent(m: { role: string; content: string; parts?: Array<{ type: string; text?: string; toolName?: string; state?: string }> }): string {
+type ChatMessage = {
+  role: string;
+  content: string;
+  parts?: Array<{
+    type: string;
+    text?: string;
+    toolInvocation?: {
+      toolName?: string;
+      state?: string;
+      args?: unknown;
+      result?: { ok?: boolean; error?: string } | unknown;
+    };
+  }>;
+};
+
+/** Only the visible prose from an AI-SDK message. Tool calls are surfaced
+ *  separately as chips — see extractToolInvocations. */
+function renderContent(m: ChatMessage): string {
   if (m.parts && m.parts.length) {
     return m.parts
-      .map((p) => {
-        if (p.type === "text" && p.text) return p.text;
-        if (p.type === "tool-invocation") {
-          const name = (p as { toolInvocation?: { toolName?: string } }).toolInvocation?.toolName ?? p.toolName ?? "tool";
-          return `↳ ${name}`;
-        }
-        return "";
-      })
-      .filter(Boolean)
-      .join("\n\n");
+      .filter((p) => p.type === "text" && p.text)
+      .map((p) => p.text as string)
+      .join("");
   }
   return m.content ?? "";
 }
 
-function Bubble({ role, content }: { role: "user" | "assistant" | "system"; content: string }) {
+type Invocation = { toolName: string; state: string; ok: boolean | null };
+
+function extractToolInvocations(m: ChatMessage): Invocation[] {
+  if (!m.parts) return [];
+  return m.parts
+    .filter((p) => p.type === "tool-invocation" && p.toolInvocation?.toolName)
+    .map((p) => {
+      const ti = p.toolInvocation!;
+      const result = ti.result as { ok?: boolean } | undefined;
+      return {
+        toolName: ti.toolName as string,
+        state: ti.state ?? "call",
+        ok: ti.state === "result" ? result?.ok ?? true : null,
+      };
+    });
+}
+
+function MessageBlock({
+  role,
+  text,
+  invocations,
+}: {
+  role: "user" | "assistant" | "system";
+  text: string;
+  invocations: Invocation[];
+}) {
   if (role === "system") return null;
   const isUser = role === "user";
+  const hasText = text.trim().length > 0;
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div
-        className="rounded-lg px-4 py-3 text-[14px] max-w-[620px] whitespace-pre-wrap"
+    <div className={`flex flex-col gap-1.5 ${isUser ? "items-end" : "items-start"}`}>
+      {hasText ? (
+        <div
+          className="rounded-lg px-4 py-3 text-[14px] max-w-[620px] whitespace-pre-wrap"
+          style={{
+            background: isUser ? "var(--color-surface-2)" : "var(--color-surface-1)",
+            borderLeft: isUser ? "none" : "3px solid color-mix(in oklab, var(--color-primary) 60%, transparent)",
+            border: "1px solid var(--color-hairline)",
+          }}
+        >
+          {text}
+        </div>
+      ) : null}
+      {invocations.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5 max-w-[620px]">
+          {invocations.map((inv, i) => (
+            <ToolChip key={i} invocation={inv} />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+const TOOL_LABELS: Record<string, string> = {
+  save_brief: "Actualizó el brief",
+  propose_creative: "Propuso una creativa",
+  approve_creative: "Aprobó una creativa",
+  build_campaign_in_meta: "Armó la campaña en Meta",
+  pause_or_activate: "Cambió estado en Meta",
+};
+
+function ToolChip({ invocation }: { invocation: Invocation }) {
+  const label = TOOL_LABELS[invocation.toolName] ?? invocation.toolName;
+  const pending = invocation.state !== "result";
+  const ok = invocation.ok ?? true;
+  const dotColor = pending
+    ? "var(--color-warning)"
+    : ok
+      ? "var(--color-success)"
+      : "var(--color-danger)";
+  return (
+    <div
+      className="inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md hairline"
+      style={{
+        background: "var(--color-surface-2)",
+        color: "var(--color-ink-muted)",
+        fontFamily: "var(--font-mono)",
+      }}
+    >
+      <span
+        className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
         style={{
-          background: isUser ? "var(--color-surface-2)" : "var(--color-surface-1)",
-          borderLeft: isUser ? "none" : "3px solid color-mix(in oklab, var(--color-primary) 60%, transparent)",
-          border: "1px solid var(--color-hairline)",
+          background: dotColor,
+          animation: pending ? "typing-bounce 1s infinite ease-in-out" : undefined,
         }}
-      >
-        {content}
-      </div>
+      />
+      <span>{label}</span>
+      {pending ? (
+        <span className="text-[10px]" style={{ color: "var(--color-ink-subtle)" }}>
+          · en curso
+        </span>
+      ) : !ok ? (
+        <span className="text-[10px]" style={{ color: "var(--color-danger)" }}>
+          · falló
+        </span>
+      ) : null}
     </div>
   );
 }

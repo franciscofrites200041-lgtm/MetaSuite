@@ -6,6 +6,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { DEFAULT_MODEL_ID } from "@/lib/models";
 import { getModelCatalog } from "@/lib/ai/catalog";
 import { ObjectiveChat } from "@/components/objective-chat";
+import { BriefEditor } from "@/components/brief-editor";
 import { SubmitButton } from "@/components/submit-button";
 import { uploadCreativeImage } from "./creative-actions";
 
@@ -117,23 +118,7 @@ export default async function ObjectivePage({
               markdown
             </span>
           </summary>
-          <form action={saveBrief} className="px-6 pb-6 flex flex-col gap-3">
-            <textarea
-              name="brief_md"
-              defaultValue={objective.brief_md ?? ""}
-              rows={12}
-              placeholder="# Contexto..."
-              className="hairline rounded-md px-3 py-2.5 text-[13px] outline-none resize-y"
-              style={{
-                background: "var(--color-surface-2)",
-                fontFamily: "var(--font-mono)",
-                lineHeight: 1.55,
-              }}
-            />
-            <SubmitButton size="sm" className="self-end" pendingLabel="Guardando…">
-              Guardar brief
-            </SubmitButton>
-          </form>
+          <BriefEditor initialBrief={objective.brief_md ?? ""} action={saveBrief} />
         </details>
 
         <details className="hairline-b">
