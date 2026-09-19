@@ -90,6 +90,7 @@ export default async function DashboardPage({
       </div>
 
       {!hasRealData ? <PreviewBanner /> : null}
+      {!hasRealData ? <HowToRead currency={currency} /> : null}
 
       <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3 mb-10">
         <Kpi label="Gasto" value={fmtMoney(shownAccount.spend, currency)} sub={`${currency}`} />
@@ -205,6 +206,59 @@ export default async function DashboardPage({
         )}
       </section>
     </section>
+  );
+}
+
+function HowToRead({ currency }: { currency: string }) {
+  const money = (n: number) => fmtMoney(n, currency);
+  const kpis: Array<[string, string]> = [
+    ["Gasto", "Cuánta plata ya se debitó del ad account. Es el total invertido en el período."],
+    ["Impresiones", "Cantidad de veces que un anuncio apareció en pantalla. Una misma persona puede sumar varias impresiones."],
+    ["Reach", "Personas únicas que vieron al menos un anuncio. Reach < impresiones porque los mismos ojos miran varias veces."],
+    ["Clicks", "Cuántas veces alguien clickeó un anuncio."],
+    ["CTR (Click-through rate)", "Porcentaje de impresiones que se convirtieron en click. Arriba de 1.5% ya se considera sano; menos suele indicar que la creativa no engancha."],
+    ["CPC (Costo por click)", "Cuánto pagás en promedio por cada click. Cuanto más bajo mejor, pero un CPC bajo con CTR bajísimo también es humo."],
+    ["CPM (Costo por mil impresiones)", "Precio de comprar 1000 impresiones. Sirve para comparar qué tan caro es tu público objetivo."],
+    ["Conversiones", `Gente que hizo la acción que buscás (comprar, dejar el mail, agendar). Requiere Pixel o Conversions API configurados en tu sitio.`],
+    ["CPA (Costo por adquisición)", `Cuánto te cuesta cada conversión. Es EL número que decide si la campaña cierra: si vender el producto te deja ${money(15)} pero el CPA es ${money(30)}, estás perdiendo plata.`],
+  ];
+  return (
+    <div className="mb-10 hairline rounded-lg p-6" style={{ background: "var(--color-surface-1)" }}>
+      <div className="mb-1 text-[11px] tracking-[0.14em] uppercase" style={{ color: "var(--color-ink-subtle)" }}>
+        Guía rápida
+      </div>
+      <h2 className="mb-6 text-[20px] tracking-tight" style={{ fontFamily: "var(--font-display)", fontWeight: 500, letterSpacing: "-0.01em" }}>
+        Cómo leer este dashboard
+      </h2>
+
+      <h3 className="text-[13px] mb-3" style={{ color: "var(--color-primary)", fontFamily: "var(--font-display)", fontWeight: 500 }}>
+        Las métricas de arriba
+      </h3>
+      <dl className="grid md:grid-cols-2 gap-x-8 gap-y-3 mb-8">
+        {kpis.map(([label, def]) => (
+          <div key={label}>
+            <dt className="text-[13px]" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>{label}</dt>
+            <dd className="text-[12px] mt-0.5" style={{ color: "var(--color-ink-muted)" }}>{def}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <h3 className="text-[13px] mb-2" style={{ color: "var(--color-primary)", fontFamily: "var(--font-display)", fontWeight: 500 }}>
+        La tabla de campañas
+      </h3>
+      <p className="text-[12px] mb-6" style={{ color: "var(--color-ink-muted)" }}>
+        Un renglón por cada campaña que armaste en Meta. La misma info que arriba, pero desagregada por campaña — así se ve qué anda y qué no.
+        Si tenés 3 campañas activas y una tiene CTR 3.2% pero otra 0.4%, esa segunda hay que rehacerla o pausarla.
+      </p>
+
+      <h3 className="text-[13px] mb-2" style={{ color: "var(--color-primary)", fontFamily: "var(--font-display)", fontWeight: 500 }}>
+        Actividad del agente
+      </h3>
+      <p className="text-[12px]" style={{ color: "var(--color-ink-muted)" }}>
+        Cuando le des permiso a la IA para ajustar presupuestos, cada movimiento queda registrado acá abajo con el motivo. Ej.: “Movió {money(8)}/día de Campaña A a Campaña B — CPA de A es 3× el de B”.
+        Vos ves qué hizo, cuándo y por qué, y podés revertir si no estás de acuerdo.
+      </p>
+    </div>
   );
 }
 

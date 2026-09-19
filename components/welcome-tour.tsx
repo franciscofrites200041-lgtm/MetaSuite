@@ -21,7 +21,7 @@ export function WelcomeTour({
 }) {
   const [i, setI] = useState(0);
   const [busy, setBusy] = useState(false);
-  const total = 5;
+  const total = 6;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -152,6 +152,7 @@ export function WelcomeTour({
 const SLIDES: React.ReactNode[] = [
   <Slide1 key="1" />,
   <Slide2 key="2" />,
+  <SlideBrief key="brief" />,
   <Slide3 key="3" />,
   <Slide4 key="4" />,
   <Slide5 key="5" />,
@@ -226,6 +227,52 @@ function Slide2() {
           </li>
         ))}
       </ol>
+    </div>
+  );
+}
+
+function SlideBrief() {
+  return (
+    <div className="grid md:grid-cols-[1.1fr_1fr] gap-10 items-center h-full">
+      <div>
+        <p className="mb-3 text-[11px] tracking-[0.2em] uppercase" style={{ color: "var(--color-ink-subtle)" }}>
+          El corazón del proceso
+        </p>
+        <h2
+          className="mb-5 text-[36px] md:text-[44px] leading-[1.05] tracking-tight"
+          style={{ fontFamily: "var(--font-display)", fontWeight: 500, letterSpacing: "-0.02em" }}
+        >
+          El brief.
+        </h2>
+        <p className="mb-4 text-[16px] leading-[1.55]" style={{ color: "var(--color-ink-muted)" }}>
+          El brief es el documento donde vive todo lo que la IA sabe sobre lo que querés lograr:
+          <strong style={{ color: "var(--color-ink)" }}> público, oferta, presupuesto, tono, competencia y objetivo concreto.</strong>
+        </p>
+        <p className="mb-4 text-[15px] leading-[1.55]" style={{ color: "var(--color-ink-muted)" }}>
+          Se genera solo mientras charlan. La IA te hace preguntas cortas, lo redacta en el panel derecho, y vos lo ves crecer en vivo.
+          Cada creativa y cada campaña que arma después se basa en este texto — no en el chat entero.
+        </p>
+        <p className="text-[14px] leading-[1.55]" style={{ color: "var(--color-ink-muted)" }}>
+          Podés editarlo a mano cuando quieras. Cuanto más específico, mejores creativas. Un brief flojo produce ads flojos.
+        </p>
+      </div>
+
+      {/* Mock brief preview */}
+      <div className="hairline rounded-lg p-5 text-[12px] leading-[1.6]" style={{ background: "var(--color-surface-1)", fontFamily: "var(--font-mono)", color: "var(--color-ink-muted)" }}>
+        <div className="text-[10px] tracking-wider uppercase mb-3" style={{ color: "var(--color-primary)" }}>
+          Brief · ejemplo
+        </div>
+        <div style={{ color: "var(--color-ink)" }}># Objetivo</div>
+        <div className="mb-2">Vender el nuevo curso online de fotografía en Buenos Aires y GBA.</div>
+        <div style={{ color: "var(--color-ink)" }}># Público</div>
+        <div className="mb-2">Hombres y mujeres 28-45, interés declarado en fotografía, ingreso medio-alto.</div>
+        <div style={{ color: "var(--color-ink)" }}># Oferta</div>
+        <div className="mb-2">Curso 8 semanas + comunidad privada. Precio USD 149 con 20% off primeras 48h.</div>
+        <div style={{ color: "var(--color-ink)" }}># Tono</div>
+        <div className="mb-2">Cercano, mentor, sin bullshit.</div>
+        <div style={{ color: "var(--color-ink)" }}># Presupuesto</div>
+        <div>USD 15/día, 21 días de campaña.</div>
+      </div>
     </div>
   );
 }
