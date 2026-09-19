@@ -90,34 +90,61 @@ export function ObjectiveChat({
     return extractQuestions(text).questions;
   }, [messages, busy]);
 
-  // Parallel array of answers per pending question. null = unanswered.
-  // Resets whenever the questionnaire changes (new turn → new questions).
-  const [answers, setAnswers] = useState<Array<string | null>>([]);
+  // Parallel array — each question gets multi-select picks + a free-text
+  // custom answer. Resets whenever the questionnaire changes.
+  const [answers, setAnswers] = useState<Array<{ picks: string[]; custom: string }>>([]);
+  const [qIdx, setQIdx] = useState(0);
   useEffect(() => {
-    setAnswers(pendingQuestions.map(() => null));
+    setAnswers(pendingQuestions.map(() => ({ picks: [], custom: "" })));
+    setQIdx(0);
   }, [pendingQuestions]);
 
-  // Compose a single user message combining the answered questions and any
-  // extra text from the composer. Skips unanswered questions. Empty = no-op.
+  function togglePick(qi: number, opt: string) {
+    setAnswers((prev) => {
+      const next = [...prev];
+      const cur = { ...next[qi] };
+      cur.picks = cur.picks.includes(opt) ? cur.picks.filter((p) => p !== opt) : [...cur.picks, opt];
+      next[qi] = cur;
+      return next;
+    });
+  }
+  function setCustom(qi: number, text: string) {
+    setAnswers((prev) => {
+      const next = [...prev];
+      next[qi] = { ...next[qi], custom: text };
+      return next;
+    });
+  }
+
+  // Combine every answered question into a single user message, then also
+  // append any free text from the composer. Unanswered questions are omitted.
   async function submitCombined() {
     const parts: string[] = [];
     for (let i = 0; i < pendingQuestions.length; i++) {
       const a = answers[i];
-      if (a && a.trim().length > 0) {
-        parts.push(`- ${pendingQuestions[i].question} — ${a.trim()}`);
-      }
+      if (!a) continue;
+      const joined = [...a.picks, a.custom.trim()].filter(Boolean).join(", ");
+      if (joined) parts.push(`- ${pendingQuestions[i].question} — ${joined}`);
     }
     const extra = input.trim();
     const combined = [parts.join("\n"), extra].filter(Boolean).join("\n\n");
     if (!combined) return;
     setAnswers([]);
-    // useChat.append handles appending the user message and triggering the
-    // assistant response. Clearing composer input via handleInputChange.
+    setQIdx(0);
     handleInputChange({ target: { value: "" } } as React.ChangeEvent<HTMLTextAreaElement>);
     await append({ role: "user", content: combined });
   }
 
-  const canSend = !busy && (input.trim().length > 0 || answers.some((a) => a && a.trim().length > 0));
+  const hasQuestions = pendingQuestions.length > 0;
+  const currentAnswer = answers[qIdx];
+  const currentHasAnswer = !!currentAnswer && (currentAnswer.picks.length > 0 || currentAnswer.custom.trim().length > 0);
+  const isLastQuestion = qIdx === pendingQuestions.length - 1;
+  // Send is enabled if: (a) no pending questions and composer has text, or
+  // (b) we're on the last question. Otherwise "Siguiente" advances.
+  const canSend = !busy && (
+    (!hasQuestions && input.trim().length > 0) ||
+    (hasQuestions && isLastQuestion)
+  );
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -235,7 +262,9 @@ export function ObjectiveChat({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (pendingQuestions.length > 0) {
+          if (hasQuestions && !isLastQuestion) {
+            setQIdx((n) => n + 1);
+          } else if (hasQuestions) {
             void submitCombined();
           } else {
             handleSubmit(e);
@@ -244,17 +273,14 @@ export function ObjectiveChat({
         className="hairline-t px-8 py-4"
       >
         <div className="max-w-[720px] mx-auto flex flex-col gap-3">
-          {pendingQuestions.length > 0 ? (
+          {hasQuestions ? (
             <PendingPanel
               questions={pendingQuestions}
-              answers={answers}
-              onPick={(qIdx, value) => {
-                setAnswers((prev) => {
-                  const next = [...prev];
-                  next[qIdx] = next[qIdx] === value ? null : value;
-                  return next;
-                });
-              }}
+              qIdx={qIdx}
+              answer={currentAnswer ?? { picks: [], custom: "" }}
+              onTogglePick={(opt) => togglePick(qIdx, opt)}
+              onSetCustom={(text) => setCustom(qIdx, text)}
+              onBack={qIdx > 0 ? () => setQIdx((n) => n - 1) : undefined}
             />
           ) : null}
 
@@ -270,8 +296,8 @@ export function ObjectiveChat({
                 }
               }}
               placeholder={
-                pendingQuestions.length > 0
-                  ? "Agregá contexto extra o mandá solo con las opciones seleccionadas…"
+                hasQuestions
+                  ? "Contexto extra opcional…"
                   : "Contale a la IA sobre este objetivo…"
               }
               rows={1}
@@ -280,11 +306,11 @@ export function ObjectiveChat({
             />
             <button
               type="submit"
-              disabled={!canSend}
+              disabled={hasQuestions && !isLastQuestion ? (!currentHasAnswer || busy) : !canSend}
               className="rounded-md px-4 text-[13px] font-medium disabled:opacity-50"
               style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
             >
-              Enviar
+              {hasQuestions && !isLastQuestion ? "Siguiente" : "Enviar"}
             </button>
           </div>
         </div>
@@ -354,54 +380,79 @@ function extractToolInvocations(m: ChatMessage): Invocation[] {
 
 function PendingPanel({
   questions,
-  answers,
-  onPick,
+  qIdx,
+  answer,
+  onTogglePick,
+  onSetCustom,
+  onBack,
 }: {
   questions: PendingQuestion[];
-  answers: Array<string | null>;
-  onPick: (qIdx: number, value: string) => void;
+  qIdx: number;
+  answer: { picks: string[]; custom: string };
+  onTogglePick: (opt: string) => void;
+  onSetCustom: (text: string) => void;
+  onBack?: () => void;
 }) {
+  const q = questions[qIdx];
+  if (!q) return null;
   return (
     <div
       className="hairline rounded-lg px-4 py-3 flex flex-col gap-3"
       style={{ background: "var(--color-surface-1)" }}
     >
-      <div className="text-[10px] tracking-wider uppercase" style={{ color: "var(--color-ink-subtle)" }}>
-        Elegí para responder
-      </div>
-      {questions.map((q, qIdx) => (
-        <div key={qIdx} className="flex flex-col gap-2">
-          <div className="text-[13px]" style={{ color: "var(--color-ink)", fontFamily: "var(--font-display)", fontWeight: 500 }}>
-            {q.question}
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {q.options.map((opt) => {
-              const selected = answers[qIdx] === opt;
-              return (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => onPick(qIdx, opt)}
-                  className="rounded-full px-3 py-1.5 text-[12.5px] transition-colors"
-                  style={{
-                    background: selected
-                      ? "color-mix(in oklab, var(--color-primary) 14%, var(--color-surface-2))"
-                      : "var(--color-surface-2)",
-                    border: `1px solid ${
-                      selected
-                        ? "color-mix(in oklab, var(--color-primary) 60%, var(--color-hairline))"
-                        : "var(--color-hairline)"
-                    }`,
-                    color: selected ? "var(--color-primary)" : "var(--color-ink)",
-                  }}
-                >
-                  {opt}
-                </button>
-              );
-            })}
-          </div>
+      <div className="flex items-center justify-between">
+        <div className="text-[10px] tracking-wider uppercase" style={{ color: "var(--color-ink-subtle)" }}>
+          Pregunta {qIdx + 1} de {questions.length} · elegí una o varias
         </div>
-      ))}
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            className="text-[11px] hover:underline"
+            style={{ color: "var(--color-ink-subtle)" }}
+          >
+            ← Anterior
+          </button>
+        ) : null}
+      </div>
+      <div className="text-[14px]" style={{ color: "var(--color-ink)", fontFamily: "var(--font-display)", fontWeight: 500 }}>
+        {q.question}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {q.options.map((opt) => {
+          const selected = answer.picks.includes(opt);
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => onTogglePick(opt)}
+              className="rounded-full px-3 py-1.5 text-[12.5px] transition-colors"
+              style={{
+                background: selected
+                  ? "color-mix(in oklab, var(--color-primary) 14%, var(--color-surface-2))"
+                  : "var(--color-surface-2)",
+                border: `1px solid ${
+                  selected
+                    ? "color-mix(in oklab, var(--color-primary) 60%, var(--color-hairline))"
+                    : "var(--color-hairline)"
+                }`,
+                color: selected ? "var(--color-primary)" : "var(--color-ink)",
+              }}
+            >
+              {selected ? "✓ " : ""}
+              {opt}
+            </button>
+          );
+        })}
+      </div>
+      <input
+        type="text"
+        value={answer.custom}
+        onChange={(e) => onSetCustom(e.target.value)}
+        placeholder="o escribí tu propia respuesta…"
+        className="hairline rounded-md px-3 py-2 text-[13px] outline-none"
+        style={{ background: "var(--color-surface-2)" }}
+      />
     </div>
   );
 }

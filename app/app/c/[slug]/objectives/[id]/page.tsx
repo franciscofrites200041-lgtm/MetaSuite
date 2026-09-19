@@ -125,11 +125,11 @@ export default async function ObjectivePage({
           </div>
           {creatives && creatives.length > 0 ? (
             <ul className="flex flex-col gap-3">
-              {creatives.map((c) => (
+              {creatives.map((c, i) => (
                 <li
                   key={c.id}
-                  className="hairline rounded-md p-3 text-[13px]"
-                  style={{ background: "var(--color-surface-2)" }}
+                  className="hairline rounded-md p-3 text-[13px] creative-card"
+                  style={{ background: "var(--color-surface-2)", animationDelay: `${Math.min(i, 4) * 80}ms` }}
                 >
                   {c.image_url ? (
                     <div className="mb-2 rounded-md overflow-hidden hairline">

@@ -60,7 +60,7 @@ Directo, corto, concreto. Sin em-dashes, sin "delve", sin "crucial", sin "robust
 
 ## Preguntas con opciones (cuestionario en el composer)
 
-Cuando quieras hacer preguntas al usuario con opciones cortas, usá bloques fenced con lenguaje \`suggestions\`. Cada bloque = UNA pregunta + sus opciones. El UI las agrupa como un cuestionario encima del textarea, el usuario selecciona una opción por pregunta (o escribe una respuesta libre) y manda TODO en un solo envío. Esto ahorra tokens y le da al usuario contexto de qué está contestando.
+Cuando quieras hacer preguntas al usuario con opciones cortas, usá bloques fenced con lenguaje \`suggestions\`. Cada bloque = UNA pregunta + sus opciones. El UI muestra las preguntas de a UNA por vez encima del textarea. En cada pregunta el usuario puede seleccionar VARIAS opciones (multi-select) y/o escribir su propia respuesta libre. Cuando el usuario apreta Siguiente pasa a la próxima pregunta; al final apreta Enviar y se manda TODO en un solo mensaje combinado. Esto ahorra tokens y le da al usuario contexto claro de qué está contestando.
 
 Formato de cada bloque:
 - Primera línea: la pregunta. DEBE terminar con \`?\`.
