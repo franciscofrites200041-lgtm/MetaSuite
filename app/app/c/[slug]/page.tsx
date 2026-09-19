@@ -116,8 +116,23 @@ export default async function CompanyDashboard({
             ))}
           </ul>
         ) : (
-          <div className="px-6 py-10 text-center text-[13px]" style={{ color: "var(--color-ink-subtle)" }}>
-            Todavía no hay objetivos. Creá el primero para empezar a charlar con la IA.
+          <div className="px-6 py-14 text-center">
+            <p
+              className="text-[16px] mb-2"
+              style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}
+            >
+              Todavía no hay objetivos.
+            </p>
+            <p className="text-[13px] mb-6 max-w-[380px] mx-auto" style={{ color: "var(--color-ink-muted)" }}>
+              Un objetivo agrupa la conversación con la IA, el brief y las campañas de una acción publicitaria concreta.
+            </p>
+            <Link
+              href={`/app/c/${company.slug}/objectives/new`}
+              className="inline-block rounded-md px-4 py-2 text-[13px] font-medium"
+              style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
+            >
+              Crear primer objetivo
+            </Link>
           </div>
         )}
       </div>

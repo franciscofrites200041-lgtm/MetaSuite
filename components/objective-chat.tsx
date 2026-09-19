@@ -155,17 +155,69 @@ function Typing() {
 
 function EmptyState() {
   return (
-    <div className="max-w-[560px] mx-auto pt-16 text-center">
+    <div className="max-w-[620px] mx-auto pt-14">
+      <p className="mb-2 text-[11px] tracking-[0.14em] uppercase text-center" style={{ color: "var(--color-ink-subtle)" }}>
+        Cómo funciona
+      </p>
       <h2
-        className="text-[22px] tracking-tight mb-3"
+        className="text-[24px] tracking-tight mb-3 text-center"
         style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}
       >
-        Contame el objetivo.
+        Contame el objetivo y arrancamos.
       </h2>
-      <p className="text-[14px]" style={{ color: "var(--color-ink-muted)" }}>
-        Si ya tenés el brief en el panel derecho, la IA lo usa como contexto. Si no, arrancá describiendo
-        qué querés lograr y ella se encarga del resto.
+      <p className="mb-8 text-[14px] text-center" style={{ color: "var(--color-ink-muted)" }}>
+        Escribí abajo qué querés lograr — vender más, generar leads, cambiar posicionamiento. Yo me encargo del resto.
       </p>
+
+      <ol className="flex flex-col gap-3 text-[13px]">
+        {[
+          {
+            n: 1,
+            t: "Te hago preguntas cortas",
+            d: "Público, oferta, presupuesto, tono. Uno por vez, sin cuestionarios eternos.",
+          },
+          {
+            n: 2,
+            t: "Redacto el brief",
+            d: "Lo ves al toque en el panel derecho. Podés editarlo cuando quieras.",
+          },
+          {
+            n: 3,
+            t: "Propongo creativas",
+            d: "2-3 variantes de copy + prompt de imagen. Vos subís las imágenes.",
+          },
+          {
+            n: 4,
+            t: "Armo la campaña en Meta",
+            d: "Con tu OK. En modo aprobación queda pausada, en automático se activa.",
+          },
+        ].map((step) => (
+          <li
+            key={step.n}
+            className="hairline rounded-md px-4 py-3 flex items-start gap-3"
+            style={{ background: "var(--color-surface-1)" }}
+          >
+            <span
+              className="shrink-0 h-6 w-6 rounded-full grid place-items-center text-[11px] font-medium"
+              style={{
+                background: "var(--color-surface-2)",
+                color: "var(--color-ink-muted)",
+                border: "1px solid var(--color-hairline)",
+              }}
+            >
+              {step.n}
+            </span>
+            <div>
+              <div className="text-[13px]" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
+                {step.t}
+              </div>
+              <div className="text-[12px] mt-0.5" style={{ color: "var(--color-ink-muted)" }}>
+                {step.d}
+              </div>
+            </div>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

@@ -10,11 +10,14 @@ export default async function SignupPage({
 
   return (
     <div className="hairline rounded-lg p-8" style={{ background: "var(--color-surface-1)" }}>
-      <h1 className="mb-1 text-[22px] leading-tight tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
-        Crear cuenta
+      <p className="mb-2 text-[10px] tracking-[0.16em] uppercase" style={{ color: "var(--color-ink-subtle)" }}>
+        Toruk AUGUR
+      </p>
+      <h1 className="mb-2 text-[24px] leading-tight tracking-tight" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
+        Crear cuenta.
       </h1>
-      <p className="mb-6 text-[13px]" style={{ color: "var(--color-ink-muted)" }}>
-        Vas a poder gestionar varias empresas desde la misma cuenta.
+      <p className="mb-7 text-[13px]" style={{ color: "var(--color-ink-muted)" }}>
+        Vas a poder gestionar varias empresas —tuyas o de clientes— desde el mismo workspace.
       </p>
       <form action={signUpWithPassword} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">

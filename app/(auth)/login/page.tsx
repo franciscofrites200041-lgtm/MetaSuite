@@ -12,11 +12,14 @@ export default async function LoginPage({
 
   return (
     <div className="hairline rounded-lg p-8" style={{ background: "var(--color-surface-1)" }}>
-      <h1 className="mb-1 text-[22px] leading-tight tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
-        Ingresar
+      <p className="mb-2 text-[10px] tracking-[0.16em] uppercase" style={{ color: "var(--color-ink-subtle)" }}>
+        Toruk AUGUR
+      </p>
+      <h1 className="mb-2 text-[24px] leading-tight tracking-tight" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
+        Pauta Meta operada por IA.
       </h1>
-      <p className="mb-6 text-[13px]" style={{ color: "var(--color-ink-muted)" }}>
-        Usá el email con el que te diste de alta.
+      <p className="mb-7 text-[13px]" style={{ color: "var(--color-ink-muted)" }}>
+        Ingresá para operar tus campañas desde una conversación.
       </p>
       {!configured ? (
         <div
