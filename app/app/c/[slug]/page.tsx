@@ -47,6 +47,13 @@ export default async function CompanyDashboard({
             {company.name}
           </h1>
           <Link
+            href={`/app/c/${company.slug}/dashboard`}
+            className="text-[12px]"
+            style={{ color: "var(--color-primary)" }}
+          >
+            Dashboard
+          </Link>
+          <Link
             href={`/app/c/${company.slug}/settings`}
             className="text-[12px]"
             style={{ color: "var(--color-ink-subtle)" }}

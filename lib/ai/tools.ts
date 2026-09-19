@@ -111,6 +111,55 @@ export function makeTools(opts: {
       },
     }),
 
+    adjust_campaign_budget: tool({
+      description:
+        "Cambiar el presupuesto diario de una campaña ya publicada en Meta. Usar cuando las métricas justifiquen mover plata (CPA muy alto en una, muy bajo en otra). Cada llamada queda registrada con el motivo y se muestra al usuario en el dashboard.",
+      parameters: z.object({
+        db_id: z.string().uuid().describe("id de la campaña (nuestra tabla)"),
+        new_daily_budget_cents: z.number().int().positive().describe("Nuevo presupuesto diario en centavos, moneda del ad account."),
+        reason: z.string().min(10).max(280).describe("Motivo en 1-2 frases. Aparece al usuario en el dashboard."),
+      }),
+      execute: async ({ db_id, new_daily_budget_cents, reason }) => {
+        const { data: row } = await supabase
+          .from("campaigns")
+          .select("id, meta_campaign_id, objective_id, ad_sets(id, meta_adset_id, daily_budget_cents)")
+          .eq("id", db_id)
+          .maybeSingle();
+        if (!row) return { ok: false, error: "not_found" };
+        if (!row.meta_campaign_id) return { ok: false, error: "not_yet_in_meta" };
+
+        // Budget in Meta lives at the ad set level under our current build
+        // (adset daily budget). Adjust the first ad set as a v1; multi-adset
+        // rebalancing is a follow-up.
+        const adSetsArr = Array.isArray(row.ad_sets) ? row.ad_sets : row.ad_sets ? [row.ad_sets] : [];
+        const primaryAdset = adSetsArr[0] as { id: string; meta_adset_id: string | null; daily_budget_cents: number | null } | undefined;
+        if (!primaryAdset?.meta_adset_id) return { ok: false, error: "no_adset_in_meta" };
+
+        const { getMetaConnection } = await import("@/lib/meta/graph");
+        const conn = await getMetaConnection(supabase, companyId);
+        if (!conn) return { ok: false, error: "meta_not_connected" };
+
+        // POST directly to the adset node — Graph's PATCH-via-POST pattern.
+        const params = new URLSearchParams({
+          daily_budget: String(new_daily_budget_cents),
+          access_token: conn.access_token,
+        });
+        const res = await fetch(`https://graph.facebook.com/v21.0/${primaryAdset.meta_adset_id}`, { method: "POST", body: params });
+        const json = (await res.json()) as { success?: boolean; error?: { message: string } };
+        if (!res.ok || json.error) return { ok: false, error: json.error?.message ?? "graph_error" };
+
+        await supabase.from("ad_sets").update({ daily_budget_cents: new_daily_budget_cents }).eq("id", primaryAdset.id);
+        await supabase.from("campaign_budget_changes").insert({
+          campaign_id: db_id,
+          old_daily_budget_cents: primaryAdset.daily_budget_cents,
+          new_daily_budget_cents,
+          reason,
+          changed_by: "agent",
+        });
+        return { ok: true };
+      },
+    }),
+
     pause_or_activate: tool({
       description: "Cambiar el estado de una campaña/ad set/ad en Meta (PAUSED o ACTIVE).",
       parameters: z.object({
