@@ -172,40 +172,7 @@ export default async function ObjectivePage({
           )}
         </section>
 
-        <details className="hairline-b">
-          <summary className="px-6 py-4 cursor-pointer text-[12px] tracking-wider uppercase" style={{ color: "var(--color-primary)" }}>
-            Config
-          </summary>
-          <form action={saveSettings} className="px-6 pb-6 flex flex-col gap-3">
-            <label className="flex flex-col gap-1">
-              <span className="text-[11px]" style={{ color: "var(--color-ink-subtle)" }}>Título</span>
-              <input
-                name="title"
-                type="text"
-                defaultValue={objective.title}
-                className="hairline rounded-md px-2 py-1.5 text-[13px] outline-none"
-                style={{ background: "var(--color-surface-2)" }}
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-[11px]" style={{ color: "var(--color-ink-subtle)" }}>Modo de publicación</span>
-              <select
-                name="publish_mode"
-                defaultValue={objective.publish_mode ?? "approval"}
-                className="hairline rounded-md px-2 py-1.5 text-[13px] outline-none"
-                style={{ background: "var(--color-surface-2)" }}
-              >
-                <option value="approval">Con aprobación (default)</option>
-                <option value="auto">Automático (activa solo)</option>
-              </select>
-            </label>
-            <SubmitButton size="sm" className="self-end" pendingLabel="Guardando…">
-              Guardar
-            </SubmitButton>
-          </form>
-        </details>
-
-        <section className="px-6 py-4">
+        <section className="hairline-b px-6 py-4">
           <div className="mb-3 text-[12px] tracking-wider uppercase" style={{ color: "var(--color-ink-muted)" }}>
             Campañas
           </div>
@@ -240,6 +207,39 @@ export default async function ObjectivePage({
             </p>
           )}
         </section>
+
+        <details>
+          <summary className="px-6 py-4 cursor-pointer text-[12px] tracking-wider uppercase" style={{ color: "var(--color-primary)" }}>
+            Config
+          </summary>
+          <form action={saveSettings} className="px-6 pb-6 flex flex-col gap-3">
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px]" style={{ color: "var(--color-ink-subtle)" }}>Título</span>
+              <input
+                name="title"
+                type="text"
+                defaultValue={objective.title}
+                className="hairline rounded-md px-2 py-1.5 text-[13px] outline-none"
+                style={{ background: "var(--color-surface-2)" }}
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[11px]" style={{ color: "var(--color-ink-subtle)" }}>Modo de publicación</span>
+              <select
+                name="publish_mode"
+                defaultValue={objective.publish_mode ?? "approval"}
+                className="hairline rounded-md px-2 py-1.5 text-[13px] outline-none"
+                style={{ background: "var(--color-surface-2)" }}
+              >
+                <option value="approval">Con aprobación (default)</option>
+                <option value="auto">Automático (activa solo)</option>
+              </select>
+            </label>
+            <SubmitButton size="sm" className="self-end" pendingLabel="Guardando…">
+              Guardar
+            </SubmitButton>
+          </form>
+        </details>
       </ResizableRail>
     </div>
   );
