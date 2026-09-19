@@ -12,7 +12,7 @@ import { SubmitButton } from "@/components/submit-button";
 // while the LLM streams save_brief args. Instead of jumping the whole
 // content in at once (feels sudden), we typewriter the visible value
 // toward the incoming target at ~30 chars/frame, so the user sees the
-// brief being written — plus a thinking-sheen overlay for the same
+// brief being written — plus a writing-sheen overlay for the same
 // visual language as the chat's "pensando" indicator.
 export function BriefEditor({
   initialBrief,
@@ -126,7 +126,7 @@ export function BriefEditor({
           }}
           rows={12}
           placeholder="# Contexto..."
-          className={`hairline rounded-md px-3 py-2.5 text-[13px] outline-none resize-y ${isStreaming ? "thinking-sheen" : ""}`}
+          className={`hairline rounded-md px-3 py-2.5 text-[13px] outline-none resize-y ${isStreaming ? "writing-sheen" : ""}`}
           style={{
             background: surfaceBg,
             fontFamily: "var(--font-mono)",
@@ -136,7 +136,7 @@ export function BriefEditor({
         />
       ) : hasContent ? (
         <div
-          className={`hairline rounded-md px-3 py-2.5 chat-prose text-[13px] max-h-[60vh] overflow-y-auto ${isStreaming ? "thinking-sheen" : ""}`}
+          className={`hairline rounded-md px-3 py-2.5 chat-prose text-[13px] max-h-[60vh] overflow-y-auto ${isStreaming ? "writing-sheen" : ""}`}
           style={{
             background: surfaceBg,
             transition: "background 0.4s ease",
