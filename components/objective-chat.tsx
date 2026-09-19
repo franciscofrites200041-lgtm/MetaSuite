@@ -3,6 +3,8 @@
 import { useChat } from "@ai-sdk/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { Model } from "@/lib/models";
 
 type InitialMsg = { id: string; role: "user" | "assistant" | "system"; content: string };
@@ -251,14 +253,17 @@ function MessageBlock({
     <div className={`flex flex-col gap-1.5 ${isUser ? "items-end" : "items-start"}`}>
       {hasText ? (
         <div
-          className="rounded-lg px-4 py-3 text-[14px] max-w-[620px] whitespace-pre-wrap"
+          className="rounded-lg px-4 py-3 text-[14px] max-w-[620px] chat-prose"
           style={{
             background: isUser ? "var(--color-surface-2)" : "var(--color-surface-1)",
-            borderLeft: isUser ? "none" : "3px solid color-mix(in oklab, var(--color-primary) 60%, transparent)",
             border: "1px solid var(--color-hairline)",
           }}
         >
-          {text}
+          {isUser ? (
+            <div className="whitespace-pre-wrap">{text}</div>
+          ) : (
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+          )}
         </div>
       ) : null}
       {invocations.length > 0 ? (
@@ -302,7 +307,7 @@ function ToolChip({ invocation }: { invocation: Invocation }) {
         className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
         style={{
           background: dotColor,
-          animation: pending ? "typing-bounce 1s infinite ease-in-out" : undefined,
+          animation: pending ? "dot-pulse 1.4s infinite ease-in-out" : undefined,
         }}
       />
       <span>{label}</span>
@@ -350,27 +355,19 @@ function Typing() {
         style={{
           background: "var(--color-ai-surface)",
           border: "1px solid var(--color-hairline)",
-          borderLeft: "3px solid color-mix(in oklab, var(--color-primary) 60%, transparent)",
         }}
       >
-        <div className="flex gap-1 shrink-0" aria-hidden="true">
-          <span className="typing-dot" style={{ animationDelay: "0ms" }} />
-          <span className="typing-dot" style={{ animationDelay: "160ms" }} />
-          <span className="typing-dot" style={{ animationDelay: "320ms" }} />
-        </div>
-        <div className="flex flex-col min-w-0">
-          <span className="text-[13px] truncate" style={{ color: "var(--color-ink-muted)" }}>
-            {msg}
+        <span className="text-[13px]" style={{ color: "var(--color-ink-muted)" }}>
+          {msg}
+        </span>
+        {elapsed >= 3 ? (
+          <span
+            className="text-[10px] ml-auto shrink-0"
+            style={{ color: "var(--color-ink-subtle)", fontFamily: "var(--font-mono)" }}
+          >
+            {elapsed}s
           </span>
-          {elapsed >= 3 ? (
-            <span
-              className="text-[10px] mt-0.5"
-              style={{ color: "var(--color-ink-subtle)", fontFamily: "var(--font-mono)" }}
-            >
-              {elapsed}s
-            </span>
-          ) : null}
-        </div>
+        ) : null}
       </div>
     </div>
   );

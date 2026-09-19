@@ -64,23 +64,9 @@ body {
   outline-offset: 1px;
 }
 
-/* Chat "thinking" indicator: three bouncing dots + a sheen bar that pulses
-   while the model is generating. Kept in globals so we can drive it with the
-   design tokens (color-primary, color-ai-surface). */
-.typing-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: color-mix(in oklab, var(--color-primary) 70%, transparent);
-  display: inline-block;
-  animation: typing-bounce 1s infinite ease-in-out;
-}
-
-@keyframes typing-bounce {
-  0%, 70%, 100% { transform: translateY(0); opacity: 0.35; }
-  35% { transform: translateY(-5px); opacity: 1; }
-}
-
+/* Chat "thinking" indicator: a soft sheen that slides across the bubble
+   background while the model generates. Drives entirely off design tokens
+   so it stays coherent with the rest of the surface language. */
 .thinking-sheen {
   position: relative;
   overflow: hidden;
@@ -102,4 +88,95 @@ body {
 @keyframes sheen-slide {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
+}
+
+/* Soft pulse for pending status dots in tool chips. */
+@keyframes dot-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* Markdown rendering inside chat bubbles. Kept intentionally close to the
+   base font size so the bubble doesn't feel like a mini-blog post. */
+.chat-prose {
+  line-height: 1.55;
+}
+.chat-prose > *:first-child { margin-top: 0; }
+.chat-prose > *:last-child { margin-bottom: 0; }
+.chat-prose p { margin: 0 0 0.6em; }
+.chat-prose h1, .chat-prose h2, .chat-prose h3 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin: 1em 0 0.4em;
+  line-height: 1.25;
+}
+.chat-prose h1 { font-size: 18px; }
+.chat-prose h2 { font-size: 16px; }
+.chat-prose h3 { font-size: 14px; }
+.chat-prose strong { font-weight: 600; color: var(--color-ink); }
+.chat-prose em { font-style: italic; }
+.chat-prose ul, .chat-prose ol {
+  margin: 0.3em 0 0.7em;
+  padding-left: 1.25em;
+}
+.chat-prose ul { list-style: disc; }
+.chat-prose ol { list-style: decimal; }
+.chat-prose li { margin: 0.2em 0; }
+.chat-prose li > p { margin: 0; }
+.chat-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: color-mix(in oklab, var(--color-hairline) 55%, transparent);
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.chat-prose pre {
+  background: var(--color-surface-inverse);
+  color: #f5f0e2;
+  padding: 12px 14px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0.6em 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.chat-prose pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  white-space: pre;
+  font-size: inherit;
+}
+.chat-prose a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.chat-prose a:hover { color: var(--color-primary-hover); }
+.chat-prose blockquote {
+  border-left: 2px solid var(--color-hairline-strong);
+  padding-left: 0.8em;
+  margin: 0.4em 0;
+  color: var(--color-ink-muted);
+}
+.chat-prose hr {
+  border: none;
+  border-top: 1px solid var(--color-hairline);
+  margin: 1em 0;
+}
+.chat-prose table {
+  border-collapse: collapse;
+  margin: 0.6em 0;
+  font-size: 13px;
+}
+.chat-prose th, .chat-prose td {
+  border: 1px solid var(--color-hairline);
+  padding: 5px 9px;
+  text-align: left;
+}
+.chat-prose th {
+  background: var(--color-surface-2);
+  font-weight: 600;
 }
