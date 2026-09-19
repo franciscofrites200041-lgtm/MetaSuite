@@ -2,6 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { randomBytes } from "node:crypto";
 import { supabaseServer } from "@/lib/supabase/server";
 
+// Scopes required by our orchestrator's Meta tool calls. `email` /
+// `public_profile` add nothing (Supabase Auth already has the user's identity)
+// and lengthen the consent screen, so they're intentionally dropped.
 const SCOPES = [
   "ads_management",
   "ads_read",
@@ -9,8 +12,6 @@ const SCOPES = [
   "pages_show_list",
   "pages_read_engagement",
   "pages_manage_ads",
-  "email",
-  "public_profile",
 ].join(",");
 
 export async function GET(request: NextRequest) {
@@ -28,7 +29,13 @@ export async function GET(request: NextRequest) {
 
   const appId = process.env.META_APP_ID;
   const redirectUri = process.env.META_OAUTH_REDIRECT_URI;
-  if (!appId || !redirectUri) return NextResponse.json({ error: "meta_oauth_not_configured" }, { status: 501 });
+  if (!appId || !redirectUri) {
+    // Instead of a bare 501 JSON, drop the user on the diagnostics page so
+    // they can see exactly which env var is missing.
+    const to = new URL("/app/settings/meta", url.origin);
+    to.searchParams.set("missing", !appId && !redirectUri ? "both" : !appId ? "app_id" : "redirect_uri");
+    return NextResponse.redirect(to);
+  }
 
   const state = randomBytes(24).toString("hex");
   const fbUrl = new URL("https://www.facebook.com/v21.0/dialog/oauth");

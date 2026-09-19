@@ -43,8 +43,16 @@ export async function GET(request: NextRequest) {
   const pages = await listPages(token);
   const primaryPage = pages.ok ? pages.data.data[0] : null;
 
-  // 4. Encrypt + upsert
-  const enc = encryptToken(token);
+  // 4. Encrypt + upsert. encryptToken throws if META_TOKEN_ENC_KEY is missing
+  // or malformed — surface that as a specific error so the user isn't left
+  // guessing.
+  let enc: { ciphertext: string; iv: string; tag: string };
+  try {
+    enc = encryptToken(token);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "encryption_failed";
+    return redirectCompany(url, company.slug, `Falta o está mal configurado META_TOKEN_ENC_KEY: ${msg}`);
+  }
   const { error: upsertErr } = await supabase
     .from("meta_connections")
     .upsert(

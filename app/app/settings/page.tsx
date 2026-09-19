@@ -148,6 +148,27 @@ export default async function AccountSettings({
         </form>
       </Card>
 
+      {/* Integrations */}
+      <Card title="Integraciones">
+        <ul className="flex flex-col">
+          <li className="flex items-center justify-between py-3">
+            <div>
+              <div className="text-[13px]">Meta Ads</div>
+              <div className="text-[11px]" style={{ color: "var(--color-ink-subtle)" }}>
+                OAuth de Facebook, diagnóstico y checklist de setup.
+              </div>
+            </div>
+            <Link
+              href="/app/settings/meta"
+              className="hairline rounded-md px-3 py-1.5 text-[12px]"
+              style={{ background: "var(--color-surface-2)", color: "var(--color-ink)" }}
+            >
+              Abrir →
+            </Link>
+          </li>
+        </ul>
+      </Card>
+
       {/* Members */}
       <Card title="Miembros">
         <ul className="flex flex-col">

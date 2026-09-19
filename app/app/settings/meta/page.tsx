@@ -1,0 +1,224 @@
+import Link from "next/link";
+import { headers } from "next/headers";
+import { supabaseServer } from "@/lib/supabase/server";
+
+export const metadata = { title: "Configuración de Meta — Toruk AUGUR" };
+
+// Meta OAuth diagnostics + setup checklist. Shows what's configured on the
+// server side and what Francisco needs to configure on the Facebook App
+// console side — with the exact URLs he needs to paste.
+export default async function MetaSettingsPage() {
+  const h = await headers();
+  const host = h.get("host") ?? "localhost:3000";
+  const proto = host.includes("localhost") ? "http" : "https";
+  const origin = `${proto}://${host}`;
+
+  const appId = process.env.META_APP_ID ?? "";
+  const appSecret = process.env.META_APP_SECRET ?? "";
+  const redirectUri = process.env.META_OAUTH_REDIRECT_URI ?? "";
+  const encKey = process.env.META_TOKEN_ENC_KEY ?? "";
+  const publicAppUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+
+  const expectedRedirect = `${origin}/api/meta/callback`;
+  const redirectMatches = redirectUri === expectedRedirect;
+  const publicUrlMatches = publicAppUrl === origin;
+
+  const supabase = await supabaseServer();
+  const { data: connections } = await supabase
+    .from("meta_connections")
+    .select("id, company_id, meta_ad_account_id, meta_page_id, status, token_expires_at, connected_at, last_error, companies(name, slug)")
+    .order("connected_at", { ascending: false });
+
+  return (
+    <main className="min-h-screen py-14 px-6" style={{ background: "var(--color-canvas)" }}>
+      <article className="max-w-[820px] mx-auto">
+        <Link href="/app/settings" className="text-[11px] tracking-[0.16em] uppercase" style={{ color: "var(--color-ink-subtle)" }}>
+          ← Configuración
+        </Link>
+        <h1
+          className="mt-3 mb-2 text-[32px] leading-[1.1] tracking-tight"
+          style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}
+        >
+          Meta Ads
+        </h1>
+        <p className="mb-8 text-[14px]" style={{ color: "var(--color-ink-muted)" }}>
+          Diagnóstico y checklist para conectar tu cuenta publicitaria de Meta.
+        </p>
+
+        {/* Env var status */}
+        <Section title="1. Variables de entorno del servidor">
+          <p className="text-[12px] mb-4" style={{ color: "var(--color-ink-subtle)" }}>
+            Estas se cargan en Vercel → Project → Settings → Environment Variables. Después de tocar cualquiera, hay que redeployar.
+          </p>
+          <EnvRow name="META_APP_ID" value={appId} kind="public" hint="Se ve. Es tu App ID de la Facebook App." />
+          <EnvRow name="META_APP_SECRET" value={appSecret} kind="secret" hint="No se muestra. Es el App Secret de la Facebook App." />
+          <EnvRow name="META_OAUTH_REDIRECT_URI" value={redirectUri} kind="public" hint="Se ve. Debe matchear exacto la que ponés en el panel FB." />
+          <EnvRow name="META_TOKEN_ENC_KEY" value={encKey} kind="secret" hint="No se muestra. 32 bytes hex (openssl rand -hex 32) para cifrar tokens." />
+          <EnvRow name="NEXT_PUBLIC_APP_URL" value={publicAppUrl} kind="public" hint="URL pública de la app. Debe matchear el origin actual." />
+
+          {!redirectMatches ? (
+            <div className="mt-4 hairline rounded-md p-3 text-[13px]" style={{ background: "color-mix(in oklab, var(--color-warning) 10%, var(--color-surface-1))" }}>
+              <strong>META_OAUTH_REDIRECT_URI no matchea el origin actual.</strong>
+              <br />
+              Actual: <code style={{ fontFamily: "var(--font-mono)" }}>{redirectUri || "(vacío)"}</code>
+              <br />
+              Esperado: <code style={{ fontFamily: "var(--font-mono)" }}>{expectedRedirect}</code>
+            </div>
+          ) : null}
+          {!publicUrlMatches ? (
+            <div className="mt-4 hairline rounded-md p-3 text-[13px]" style={{ background: "color-mix(in oklab, var(--color-warning) 10%, var(--color-surface-1))" }}>
+              <strong>NEXT_PUBLIC_APP_URL no matchea el origin actual.</strong>
+              <br />
+              Actual: <code style={{ fontFamily: "var(--font-mono)" }}>{publicAppUrl || "(vacío)"}</code>
+              <br />
+              Esperado: <code style={{ fontFamily: "var(--font-mono)" }}>{origin}</code>
+            </div>
+          ) : null}
+        </Section>
+
+        {/* Redirect URI copy box */}
+        <Section title="2. URI de redirección para pegar en Facebook">
+          <p className="text-[12px] mb-3" style={{ color: "var(--color-ink-subtle)" }}>
+            Copiala tal cual. Va en Facebook App → Facebook Login for Business → Settings → <strong>Valid OAuth Redirect URIs</strong>.
+          </p>
+          <CopyBox value={expectedRedirect} />
+        </Section>
+
+        {/* Setup checklist */}
+        <Section title="3. Checklist del panel de Facebook Developer">
+          <ol className="text-[13px] space-y-3 pl-5 list-decimal" style={{ color: "var(--color-ink-muted)" }}>
+            <li>
+              <strong>Tipo de app: Consumer.</strong> Business no expone Facebook Login clásico. Si tu app actual es Business, creá una nueva Consumer.
+            </li>
+            <li>
+              <strong>App Roles → Administrators</strong>: agregate a vos mismo. Sin esto, ni siquiera vos podés loguear en dev mode.
+            </li>
+            <li>
+              <strong>Settings → Basic</strong>: cargá Privacy Policy URL{" "}
+              <code className="text-[11px]" style={{ fontFamily: "var(--font-mono)" }}>{origin}/privacy</code> y Terms of Service URL{" "}
+              <code className="text-[11px]" style={{ fontFamily: "var(--font-mono)" }}>{origin}/terms</code>.
+            </li>
+            <li>
+              <strong>Settings → Basic → App Domains</strong>: agregá el dominio sin protocolo:{" "}
+              <code className="text-[11px]" style={{ fontFamily: "var(--font-mono)" }}>{host}</code>.
+            </li>
+            <li>
+              <strong>Products → Facebook Login for Business → Settings</strong>: pegá la URL del punto 2 en <em>Valid OAuth Redirect URIs</em>. Guardar cambios.
+            </li>
+            <li>
+              <strong>Products → Facebook Login for Business → Configurations</strong>: creá una configuración con permisos{" "}
+              <code style={{ fontFamily: "var(--font-mono)" }}>ads_management</code>,{" "}
+              <code style={{ fontFamily: "var(--font-mono)" }}>ads_read</code>,{" "}
+              <code style={{ fontFamily: "var(--font-mono)" }}>business_management</code>,{" "}
+              <code style={{ fontFamily: "var(--font-mono)" }}>pages_show_list</code>,{" "}
+              <code style={{ fontFamily: "var(--font-mono)" }}>pages_read_engagement</code>,{" "}
+              <code style={{ fontFamily: "var(--font-mono)" }}>pages_manage_ads</code>.
+            </li>
+            <li>
+              <strong>App Review → Permissions and Features</strong>: en Dev mode no hace falta. Los admins/testers pueden usar todos los permisos con Standard Access. NO completes Business Verification hasta que quieras salir de Dev.
+            </li>
+            <li>
+              <strong>Copiá App ID + App Secret</strong> a Vercel → Environment Variables como <code style={{ fontFamily: "var(--font-mono)" }}>META_APP_ID</code> y <code style={{ fontFamily: "var(--font-mono)" }}>META_APP_SECRET</code>. Redeploy.
+            </li>
+          </ol>
+        </Section>
+
+        {/* Live connections */}
+        <Section title="4. Conexiones activas">
+          {connections && connections.length > 0 ? (
+            <ul className="flex flex-col gap-2">
+              {connections.map((c) => {
+                const co = Array.isArray(c.companies) ? c.companies[0] : c.companies;
+                const expires = c.token_expires_at ? new Date(c.token_expires_at) : null;
+                const daysLeft = expires ? Math.round((expires.getTime() - Date.now()) / 86400000) : null;
+                return (
+                  <li key={c.id} className="hairline rounded-md p-3 flex items-center justify-between gap-4" style={{ background: "var(--color-surface-2)" }}>
+                    <div className="min-w-0">
+                      <div className="text-[13px] font-medium truncate">{co?.name ?? c.company_id}</div>
+                      <div className="text-[11px] mt-0.5" style={{ color: "var(--color-ink-subtle)", fontFamily: "var(--font-mono)" }}>
+                        act_{c.meta_ad_account_id} · page {c.meta_page_id ?? "—"}
+                      </div>
+                      {c.last_error ? (
+                        <div className="text-[11px] mt-1" style={{ color: "var(--color-danger)" }}>
+                          Último error: {c.last_error}
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-[11px] tracking-wider uppercase" style={{ color: c.status === "active" ? "var(--color-success)" : "var(--color-danger)" }}>
+                        {c.status}
+                      </div>
+                      {daysLeft !== null ? (
+                        <div className="text-[11px] mt-0.5" style={{ color: "var(--color-ink-subtle)" }}>
+                          expira en {daysLeft}d
+                        </div>
+                      ) : null}
+                      {co?.slug ? (
+                        <a
+                          href={`/api/meta/oauth?company_id=${c.company_id}`}
+                          className="inline-block mt-2 text-[11px] underline"
+                          style={{ color: "var(--color-ink-muted)" }}
+                        >
+                          Reconectar
+                        </a>
+                      ) : null}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-[13px]" style={{ color: "var(--color-ink-subtle)" }}>
+              Todavía no hay ninguna conexión de Meta guardada. Conectá desde el panel de una empresa.
+            </p>
+          )}
+        </Section>
+      </article>
+    </main>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mb-10">
+      <h2 className="mb-4 text-[16px] tracking-tight" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
+        {title}
+      </h2>
+      <div className="hairline rounded-lg p-5" style={{ background: "var(--color-surface-1)" }}>
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function EnvRow({ name, value, kind, hint }: { name: string; value: string; kind: "public" | "secret"; hint: string }) {
+  const isSet = value.length > 0;
+  const display = !isSet ? "(vacío)" : kind === "secret" ? `••• (${value.length} chars)` : value;
+  return (
+    <div className="flex items-start justify-between gap-4 py-2 hairline-b last:border-b-0">
+      <div className="min-w-0">
+        <div className="text-[12px] font-medium" style={{ fontFamily: "var(--font-mono)" }}>{name}</div>
+        <div className="text-[11px] mt-0.5" style={{ color: "var(--color-ink-subtle)" }}>{hint}</div>
+      </div>
+      <div className="text-right shrink-0">
+        <div className="text-[11px] tracking-wider uppercase" style={{ color: isSet ? "var(--color-success)" : "var(--color-danger)" }}>
+          {isSet ? "OK" : "falta"}
+        </div>
+        <div className="text-[11px] mt-0.5 truncate max-w-[300px]" style={{ color: "var(--color-ink-muted)", fontFamily: "var(--font-mono)" }}>
+          {display}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CopyBox({ value }: { value: string }) {
+  return (
+    <div
+      className="hairline rounded-md px-3 py-2.5 text-[13px] select-all break-all"
+      style={{ background: "var(--color-surface-2)", fontFamily: "var(--font-mono)" }}
+    >
+      {value}
+    </div>
+  );
+}

@@ -157,13 +157,23 @@ function MetaBadge({
 }) {
   if (!conn) {
     return (
-      <a
-        href={`/api/meta/oauth?company_id=${companyId}`}
-        className="rounded-md px-3 py-1.5 text-[12px] font-medium"
-        style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
-      >
-        Conectar Meta Ads
-      </a>
+      <div className="flex items-center gap-2">
+        <a
+          href={`/api/meta/oauth?company_id=${companyId}`}
+          className="rounded-md px-3 py-1.5 text-[12px] font-medium"
+          style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
+        >
+          Conectar Meta Ads
+        </a>
+        <Link
+          href="/app/settings/meta"
+          className="text-[11px] underline"
+          style={{ color: "var(--color-ink-subtle)" }}
+          title="Ver diagnóstico y checklist"
+        >
+          ¿Problemas?
+        </Link>
+      </div>
     );
   }
   const color =
@@ -181,6 +191,13 @@ function MetaBadge({
       >
         Reconectar
       </a>
+      <Link
+        href="/app/settings/meta"
+        className="text-[11px] underline"
+        style={{ color: "var(--color-ink-subtle)" }}
+      >
+        Diagnóstico
+      </Link>
     </div>
   );
 }
