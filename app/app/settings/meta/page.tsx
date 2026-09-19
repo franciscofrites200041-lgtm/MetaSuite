@@ -23,6 +23,19 @@ export default async function MetaSettingsPage() {
   const redirectMatches = redirectUri === expectedRedirect;
   const publicUrlMatches = publicAppUrl === origin;
 
+  // Live probe of Meta's Graph API to verify the app_id is registered and
+  // reachable. Anonymous endpoint — doesn't need a token. If this fails we
+  // know the problem is on Meta's side (app disabled, wrong id, etc).
+  const probe = await probeMetaApp(appId);
+
+  // Full OAuth URL that would be constructed on "Conectar Meta Ads". Users
+  // can copy this into a browser to see the exact error Facebook returns
+  // without going through the app.
+  const scopes = "ads_management,ads_read,business_management,pages_show_list,pages_read_engagement,pages_manage_ads";
+  const oauthUrl = appId && redirectUri
+    ? `https://www.facebook.com/v21.0/dialog/oauth?client_id=${encodeURIComponent(appId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&response_type=code&state=DIAGNOSTIC`
+    : null;
+
   const supabase = await supabaseServer();
   const { data: connections } = await supabase
     .from("meta_connections")
@@ -76,8 +89,54 @@ export default async function MetaSettingsPage() {
           ) : null}
         </Section>
 
+        {/* Live probe of the Meta app itself */}
+        <Section title="2. ¿Meta ve tu app?">
+          {probe === null ? (
+            <p className="text-[13px]" style={{ color: "var(--color-ink-subtle)" }}>
+              Cargá <code style={{ fontFamily: "var(--font-mono)" }}>META_APP_ID</code> en la sección 1 y esta prueba se activa.
+            </p>
+          ) : probe.ok ? (
+            <div className="flex flex-col gap-2 text-[13px]">
+              <div className="flex items-center gap-2">
+                <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--color-success)" }} />
+                <span style={{ color: "var(--color-success)" }}>App visible en Meta</span>
+              </div>
+              <div style={{ color: "var(--color-ink-muted)" }}>
+                Nombre: <strong style={{ color: "var(--color-ink)" }}>{probe.appName}</strong>
+                {probe.category ? <> · Categoría: {probe.category}</> : null}
+              </div>
+              {probe.link ? (
+                <a href={probe.link} target="_blank" rel="noopener" className="text-[12px] underline" style={{ color: "var(--color-ink-muted)" }}>
+                  Página pública de la app →
+                </a>
+              ) : null}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2 text-[13px]">
+              <div className="flex items-center gap-2">
+                <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--color-danger)" }} />
+                <span style={{ color: "var(--color-danger)" }}>Meta no reconoce este app_id</span>
+              </div>
+              <div style={{ color: "var(--color-ink-muted)" }}>{probe.error}</div>
+              <p className="text-[12px] mt-2" style={{ color: "var(--color-ink-subtle)" }}>
+                Posibles causas: app deshabilitada en el panel de FB, app_id mal copiado (¿confundiste app_id con app_secret?), o la app está en modo Development y todavía no la publicaste.
+              </p>
+            </div>
+          )}
+        </Section>
+
+        {/* OAuth URL preview */}
+        {oauthUrl ? (
+          <Section title="3. URL de OAuth que se manda a Facebook">
+            <p className="text-[12px] mb-3" style={{ color: "var(--color-ink-subtle)" }}>
+              Es exactamente la URL que se construye cuando apretás &quot;Conectar Meta Ads&quot;. Copiala y pegala en un browser incógnito para ver el error real que Facebook te devuelve sin pasar por nuestra app.
+            </p>
+            <CopyBox value={oauthUrl} />
+          </Section>
+        ) : null}
+
         {/* Redirect URI copy box */}
-        <Section title="2. URI de redirección para pegar en Facebook">
+        <Section title="4. URI de redirección para pegar en Facebook">
           <p className="text-[12px] mb-3" style={{ color: "var(--color-ink-subtle)" }}>
             Copiala tal cual. Va en Facebook App → Facebook Login for Business → Settings → <strong>Valid OAuth Redirect URIs</strong>.
           </p>
@@ -85,7 +144,7 @@ export default async function MetaSettingsPage() {
         </Section>
 
         {/* Setup checklist */}
-        <Section title="3. Checklist del panel de Facebook Developer">
+        <Section title="5. Checklist del panel de Facebook Developer">
           <ol className="text-[13px] space-y-3 pl-5 list-decimal" style={{ color: "var(--color-ink-muted)" }}>
             <li>
               <strong>Tipo de app: Consumer.</strong> Business no expone Facebook Login clásico. Si tu app actual es Business, creá una nueva Consumer.
@@ -124,7 +183,7 @@ export default async function MetaSettingsPage() {
         </Section>
 
         {/* Live connections */}
-        <Section title="4. Conexiones activas">
+        <Section title="6. Conexiones activas">
           {connections && connections.length > 0 ? (
             <ul className="flex flex-col gap-2">
               {connections.map((c) => {
@@ -176,6 +235,31 @@ export default async function MetaSettingsPage() {
       </article>
     </main>
   );
+}
+
+type Probe =
+  | { ok: true; appName: string; category?: string; link?: string }
+  | { ok: false; error: string };
+
+// Server-side ping to Meta's Graph API to check that META_APP_ID actually
+// points at a registered, enabled app. Anonymous — no token needed. Meta
+// returns app metadata for public app IDs, or an error object if the id is
+// invalid / the app was disabled. This tells us in one call whether the
+// problem is on our env-var side or on Meta's console side.
+async function probeMetaApp(appId: string): Promise<Probe | null> {
+  if (!appId) return null;
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v21.0/${encodeURIComponent(appId)}?fields=name,category,link`,
+      { cache: "no-store" }
+    );
+    const json = (await res.json()) as { name?: string; category?: string; link?: string; error?: { message: string } };
+    if (json.error) return { ok: false, error: json.error.message };
+    if (!json.name) return { ok: false, error: "Meta no devolvió metadata para este app_id" };
+    return { ok: true, appName: json.name, category: json.category, link: json.link };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "network_error" };
+  }
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
