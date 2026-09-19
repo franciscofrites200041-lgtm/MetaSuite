@@ -65,15 +65,14 @@ export async function POST(request: NextRequest) {
   }
 
   if (!process.env.OPENROUTER_API_KEY) {
-    // Graceful degradation: persist user message + a canned reply so the UI keeps working.
     const lastUser = body.messages.filter((m) => m.role === "user").pop();
     if (lastUser) {
       await supabase.from("chat_messages").insert({ thread_id: body.threadId, role: "user", content: lastUser.content });
     }
     const stub =
-      "Falta OPENROUTER_API_KEY en el entorno. Cargalo en .env.local y reiniciá `npm run dev` para hablar de verdad conmigo.";
+      "Falta OPENROUTER_API_KEY en las variables de entorno de Vercel. Andá a Project → Settings → Environment Variables, cargala, y redeployá.";
     await supabase.from("chat_messages").insert({ thread_id: body.threadId, role: "assistant", content: stub });
-    return NextResponse.json({ text: stub }, { status: 200 });
+    return aiTextResponse(stub);
   }
 
   // Persist the user message that just came in (last one in messages array).
@@ -124,5 +123,22 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  return result.toDataStreamResponse();
+  return result.toDataStreamResponse({
+    getErrorMessage: (err) => {
+      console.error("[chat] streamText error", err);
+      const msg = err instanceof Error ? err.message : String(err);
+      return `Error del modelo (${modelId}): ${msg}`;
+    },
+  });
+}
+
+// AI SDK v4 data-stream text part: `0:"..."\n`. Lets us emit a plain message
+// through the same protocol useChat expects, without spinning up a model.
+function aiTextResponse(text: string): Response {
+  return new Response(`0:${JSON.stringify(text)}\n`, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "x-vercel-ai-data-stream": "v1",
+    },
+  });
 }
