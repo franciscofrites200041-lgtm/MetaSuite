@@ -20,6 +20,15 @@ export default async function AppHome() {
     .select("id, name, slug, industry, description, logo_url, website_url")
     .order("created_at", { ascending: true });
 
+  // First-time user: send them through the guided tour before anything else.
+  // Once they finish or skip, tutorial_seen is set on user_metadata and this
+  // redirect stops firing. Users who already have companies never see it — we
+  // assume they've been through onboarding already.
+  const tutorialSeen = user.user?.user_metadata?.tutorial_seen === true;
+  if (!tutorialSeen && (!companies || companies.length === 0)) {
+    redirect("/welcome");
+  }
+
   // First-time user with no companies: rich welcome + guided path.
   if (!companies || companies.length === 0) {
     return (

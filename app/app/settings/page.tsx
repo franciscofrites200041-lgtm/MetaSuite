@@ -169,6 +169,25 @@ export default async function AccountSettings({
         </ul>
       </Card>
 
+      {/* Tutorial */}
+      <Card title="Tutorial">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[13px]">Introducción a Toruk AUGUR</div>
+            <div className="text-[11px]" style={{ color: "var(--color-ink-subtle)" }}>
+              Volvé a ver la guía de bienvenida — cómo funciona, elección de modelo, modos de publicación.
+            </div>
+          </div>
+          <Link
+            href="/welcome"
+            className="hairline rounded-md px-3 py-1.5 text-[12px]"
+            style={{ background: "var(--color-surface-2)", color: "var(--color-ink)" }}
+          >
+            Ver de nuevo →
+          </Link>
+        </div>
+      </Card>
+
       {/* Members */}
       <Card title="Miembros">
         <ul className="flex flex-col">
