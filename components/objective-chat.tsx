@@ -1,7 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Model } from "@/lib/models";
 
 type InitialMsg = { id: string; role: "user" | "assistant" | "system"; content: string };
@@ -18,7 +18,28 @@ export function ObjectiveChat({
   initialMessages: InitialMsg[];
 }) {
   const [modelId, setModelId] = useState(initialModelId);
+  const [modelFilter, setModelFilter] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const filteredGroups = useMemo(() => {
+    const q = modelFilter.trim().toLowerCase();
+    const match = (m: Model) =>
+      !q ||
+      m.id.toLowerCase().includes(q) ||
+      m.label.toLowerCase().includes(q) ||
+      m.provider.toLowerCase().includes(q);
+    const groups: Record<string, Model[]> = {};
+    for (const m of models) {
+      if (!match(m)) continue;
+      (groups[m.provider] ||= []).push(m);
+    }
+    // Preserve incoming order (server already sorted it).
+    const orderedProviders: string[] = [];
+    for (const m of models) if (groups[m.provider] && !orderedProviders.includes(m.provider)) orderedProviders.push(m.provider);
+    return orderedProviders.map((p) => [p, groups[p]] as const);
+  }, [models, modelFilter]);
+
+  const selected = models.find((m) => m.id === modelId);
 
   const { messages, input, handleInputChange, handleSubmit, status } = useChat({
     api: "/api/chat",
@@ -36,32 +57,39 @@ export function ObjectiveChat({
   return (
     <>
       <div className="px-8 py-2 flex items-center gap-2 hairline-b">
-        <span className="text-[11px]" style={{ color: "var(--color-ink-subtle)" }}>
+        <span className="text-[11px] shrink-0" style={{ color: "var(--color-ink-subtle)" }}>
           Modelo
         </span>
+        <input
+          type="text"
+          value={modelFilter}
+          onChange={(e) => setModelFilter(e.target.value)}
+          placeholder={`Buscar en ${models.length} modelos…`}
+          className="hairline rounded-md px-2 py-1 text-[12px] outline-none w-[180px]"
+          style={{ background: "var(--color-surface-2)" }}
+        />
         <select
           value={modelId}
           onChange={(e) => setModelId(e.target.value)}
-          className="hairline rounded-md px-2 py-1 text-[12px] bg-transparent outline-none max-w-[240px]"
+          className="hairline rounded-md px-2 py-1 text-[12px] bg-transparent outline-none max-w-[260px]"
           style={{ background: "var(--color-surface-2)", fontFamily: "var(--font-mono)" }}
         >
-          {Object.entries(
-            models.reduce<Record<string, Model[]>>((acc, m) => {
-              (acc[m.provider] ||= []).push(m);
-              return acc;
-            }, {})
-          ).map(([provider, list]) => (
-            <optgroup key={provider} label={provider}>
-              {list.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label}
-                </option>
-              ))}
-            </optgroup>
-          ))}
+          {filteredGroups.length === 0 ? (
+            <option value={modelId}>Sin resultados</option>
+          ) : (
+            filteredGroups.map(([provider, list]) => (
+              <optgroup key={provider} label={provider}>
+                {list.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+              </optgroup>
+            ))
+          )}
         </select>
         <span className="ml-2 text-[11px] truncate" style={{ color: "var(--color-ink-subtle)" }}>
-          {models.find((m) => m.id === modelId)?.hint ?? ""}
+          {selected?.hint ?? ""}
         </span>
       </div>
 
