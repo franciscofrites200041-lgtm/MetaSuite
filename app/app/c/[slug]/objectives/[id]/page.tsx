@@ -7,6 +7,7 @@ import { DEFAULT_MODEL_ID } from "@/lib/models";
 import { getModelCatalog } from "@/lib/ai/catalog";
 import { ObjectiveChat } from "@/components/objective-chat";
 import { BriefEditor } from "@/components/brief-editor";
+import { ResizableRail } from "@/components/resizable-rail";
 import { SubmitButton } from "@/components/submit-button";
 import { uploadCreativeImage } from "./creative-actions";
 
@@ -104,11 +105,8 @@ export default async function ObjectivePage({
         />
       </section>
 
-      {/* Right rail */}
-      <aside
-        className="w-[380px] shrink-0 flex flex-col hairline-l overflow-y-auto"
-        style={{ background: "var(--color-surface-1)" }}
-      >
+      {/* Right rail — resizable + collapsible */}
+      <ResizableRail>
         <details open className="hairline-b">
           <summary className="px-6 py-4 cursor-pointer flex items-center justify-between">
             <span className="text-[12px] tracking-wider uppercase" style={{ color: "var(--color-ink-muted)" }}>
@@ -242,7 +240,7 @@ export default async function ObjectivePage({
             </p>
           )}
         </section>
-      </aside>
+      </ResizableRail>
     </div>
   );
 }
