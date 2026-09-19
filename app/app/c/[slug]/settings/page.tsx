@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { SubmitButton } from "@/components/submit-button";
+import { DeleteButton } from "@/components/delete-button";
 
 export default async function CompanySettingsPage({
   params,
@@ -60,6 +61,17 @@ export default async function CompanySettingsPage({
     revalidatePath(`/app/c/${slug}/settings`);
     revalidatePath(`/app/c/${slug}`);
     redirect(`/app/c/${slug}/settings?saved=1`);
+  }
+
+  async function deleteCompany() {
+    "use server";
+    const supa = await supabaseServer();
+    // RLS enforces membership. Cascade takes objectives, chats, creatives,
+    // campaigns, meta_connections down with the company.
+    const { error } = await supa.from("companies").delete().eq("id", company!.id);
+    if (error) redirect(`/app/c/${slug}/settings?error=${encodeURIComponent(error.message)}`);
+    revalidatePath("/app");
+    redirect("/app");
   }
 
   return (
@@ -181,6 +193,28 @@ export default async function CompanySettingsPage({
         >
           → Ir a la empresa
         </Link>
+      </div>
+
+      <div
+        className="mt-12 hairline rounded-md p-4 flex items-start justify-between gap-4"
+        style={{
+          background: "color-mix(in oklab, var(--color-danger) 5%, var(--color-surface-1))",
+          borderColor: "color-mix(in oklab, var(--color-danger) 30%, var(--color-hairline))",
+        }}
+      >
+        <div className="min-w-0">
+          <div className="text-[14px] mb-1" style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}>
+            Borrar empresa
+          </div>
+          <p className="text-[12px]" style={{ color: "var(--color-ink-muted)" }}>
+            Elimina la empresa, todos sus objetivos, chats, creativas, campañas y la conexión con Meta. No se puede deshacer.
+          </p>
+        </div>
+        <DeleteButton
+          action={deleteCompany}
+          confirmMsg={`¿Borrar la empresa "${company.name}"? Se borran objetivos, chats, creativas y campañas. No se puede deshacer.`}
+          label="Borrar empresa"
+        />
       </div>
     </section>
   );

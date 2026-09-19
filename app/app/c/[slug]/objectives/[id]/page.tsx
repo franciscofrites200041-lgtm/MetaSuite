@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { DEFAULT_MODEL_ID } from "@/lib/models";
@@ -9,6 +9,7 @@ import { ObjectiveChat } from "@/components/objective-chat";
 import { BriefEditor } from "@/components/brief-editor";
 import { ResizableRail } from "@/components/resizable-rail";
 import { SubmitButton } from "@/components/submit-button";
+import { DeleteButton } from "@/components/delete-button";
 import { uploadCreativeImage } from "./creative-actions";
 
 export default async function ObjectivePage({
@@ -61,6 +62,15 @@ export default async function ObjectivePage({
     const supa = await supabaseServer();
     await supa.from("objectives").update({ brief_md: brief }).eq("id", id);
     revalidatePath(`/app/c/${slug}/objectives/${id}`);
+  }
+
+  async function deleteObjective() {
+    "use server";
+    const supa = await supabaseServer();
+    // RLS enforces company membership. Cascade drops chats/creatives/campaigns.
+    await supa.from("objectives").delete().eq("id", id);
+    revalidatePath(`/app/c/${slug}`);
+    redirect(`/app/c/${slug}`);
   }
 
   async function saveSettings(formData: FormData) {
@@ -239,6 +249,16 @@ export default async function ObjectivePage({
               Guardar
             </SubmitButton>
           </form>
+          <div className="px-6 pb-6 hairline-t pt-4 mt-2 flex items-center justify-between gap-3">
+            <div className="text-[11px]" style={{ color: "var(--color-ink-subtle)" }}>
+              Borra el objetivo, su chat, creativas y campañas asociadas. No se puede deshacer.
+            </div>
+            <DeleteButton
+              action={deleteObjective}
+              confirmMsg={`¿Borrar el objetivo "${objective.title}"? Se borran chat, creativas y campañas asociadas. No se puede deshacer.`}
+              label="Borrar objetivo"
+            />
+          </div>
         </details>
       </ResizableRail>
     </div>
