@@ -23,6 +23,7 @@ export function ObjectiveChat({
   const [modelId, setModelId] = useState(initialModelId);
   const [modelFilter, setModelFilter] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
   const seenResults = useRef<Set<string>>(new Set());
 
@@ -46,12 +47,35 @@ export function ObjectiveChat({
 
   const selected = models.find((m) => m.id === modelId);
 
-  const { messages, input, handleInputChange, handleSubmit, status } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, status, append } = useChat({
     api: "/api/chat",
     id: threadId,
     initialMessages,
     body: { threadId, modelId },
   });
+
+  // Guard against a thread pointing at a model that vanished from the live
+  // OpenRouter catalog (retired, renamed, filtered out). Coerce to the first
+  // available Anthropic model — or the first in the list if Anthropic is gone
+  // too — so the select box doesn't render whatever weird first option the
+  // browser picks when value doesn't match any <option>.
+  useEffect(() => {
+    if (models.length === 0) return;
+    if (!models.find((m) => m.id === modelId)) {
+      const fallback = models.find((m) => m.providerSlug === "anthropic") ?? models[0];
+      setModelId(fallback.id);
+    }
+  }, [models, modelId]);
+
+  // Auto-grow the composer as the user types. Caps at ~7 lines (200px), then
+  // becomes scrollable. Without this, long messages hide behind the fixed
+  // rows={1} height.
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
+  }, [input]);
 
   const busy = status === "streaming" || status === "submitted";
 
@@ -141,12 +165,19 @@ export function ObjectiveChat({
           <EmptyState />
         ) : (
           <div className="flex flex-col gap-3 max-w-[720px] mx-auto">
-            {messages.map((m) => {
+            {messages.map((m, idx) => {
               const text = renderContent(m as ChatMessage);
               const invocations = extractToolInvocations(m as ChatMessage);
               const role = m.role as "user" | "assistant" | "system";
+              const isLast = idx === messages.length - 1;
               return (
-                <MessageBlock key={m.id} role={role} text={text} invocations={invocations} />
+                <MessageBlock
+                  key={m.id}
+                  role={role}
+                  text={text}
+                  invocations={invocations}
+                  onSuggestionPick={isLast && !busy ? (s) => { void append({ role: "user", content: s }); } : undefined}
+                />
               );
             })}
             {(() => {
@@ -166,6 +197,7 @@ export function ObjectiveChat({
       <form onSubmit={handleSubmit} className="hairline-t px-8 py-4">
         <div className="max-w-[720px] mx-auto flex gap-2">
           <textarea
+            ref={textareaRef}
             value={input}
             onChange={handleInputChange}
             onKeyDown={(e) => {
@@ -176,8 +208,8 @@ export function ObjectiveChat({
             }}
             placeholder="Contale a la IA sobre este objetivo…"
             rows={1}
-            className="flex-1 hairline rounded-md px-3 py-2.5 text-[14px] outline-none resize-none"
-            style={{ background: "var(--color-surface-2)" }}
+            className="flex-1 hairline rounded-md px-3 py-2.5 text-[14px] outline-none resize-none overflow-y-auto"
+            style={{ background: "var(--color-surface-2)", maxHeight: 200, minHeight: 42 }}
           />
           <button
             type="submit"
@@ -237,18 +269,36 @@ function extractToolInvocations(m: ChatMessage): Invocation[] {
     });
 }
 
+// Pulls a ```suggestions ...``` fenced block out of assistant markdown and
+// returns the prose + the parsed suggestion lines separately. If no block,
+// suggestions is empty.
+function splitSuggestions(text: string): { markdown: string; suggestions: string[] } {
+  const re = /```suggestions\s*\n([\s\S]*?)```/;
+  const m = text.match(re);
+  if (!m) return { markdown: text, suggestions: [] };
+  const suggestions = m[1]
+    .split("\n")
+    .map((l) => l.replace(/^[\s\-*•]+/, "").trim())
+    .filter(Boolean);
+  const markdown = text.replace(re, "").trim();
+  return { markdown, suggestions };
+}
+
 function MessageBlock({
   role,
   text,
   invocations,
+  onSuggestionPick,
 }: {
   role: "user" | "assistant" | "system";
   text: string;
   invocations: Invocation[];
+  onSuggestionPick?: (suggestion: string) => void;
 }) {
   if (role === "system") return null;
   const isUser = role === "user";
-  const hasText = text.trim().length > 0;
+  const { markdown, suggestions } = !isUser ? splitSuggestions(text) : { markdown: text, suggestions: [] };
+  const hasText = markdown.trim().length > 0;
   return (
     <div className={`flex flex-col gap-1.5 ${isUser ? "items-end" : "items-start"}`}>
       {hasText ? (
@@ -262,8 +312,26 @@ function MessageBlock({
           {isUser ? (
             <div className="whitespace-pre-wrap">{text}</div>
           ) : (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{text}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
           )}
+        </div>
+      ) : null}
+      {suggestions.length > 0 && onSuggestionPick ? (
+        <div className="flex flex-wrap gap-1.5 max-w-[620px]">
+          {suggestions.map((s, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => onSuggestionPick(s)}
+              className="hairline rounded-full px-3 py-1.5 text-[13px] text-left transition-all hover:border-[color:color-mix(in_oklab,var(--color-primary)_45%,var(--color-hairline))]"
+              style={{
+                background: "var(--color-surface-2)",
+                color: "var(--color-ink)",
+              }}
+            >
+              {s}
+            </button>
+          ))}
         </div>
       ) : null}
       {invocations.length > 0 ? (

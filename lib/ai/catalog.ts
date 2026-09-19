@@ -10,7 +10,7 @@
 // https://openrouter.ai/docs/api-reference/list-available-models
 
 import "server-only";
-import type { Model } from "@/lib/models";
+import { DEFAULT_MODEL_ID, type Model } from "@/lib/models";
 
 type RawModel = {
   id: string;
@@ -132,6 +132,11 @@ export async function getModelCatalog(): Promise<Model[]> {
     return idx === -1 ? 999 : idx;
   };
   models.sort((a, b) => {
+    // Pin DEFAULT_MODEL_ID to the very top of its provider group so the
+    // <select> never renders some weird beta model first when the value
+    // matches (Claude Sonnet 4.6, not Fable, is the canonical default).
+    if (a.id === DEFAULT_MODEL_ID) return -1;
+    if (b.id === DEFAULT_MODEL_ID) return 1;
     const pa = providerRank(a.providerSlug);
     const pb = providerRank(b.providerSlug);
     if (pa !== pb) return pa - pb;

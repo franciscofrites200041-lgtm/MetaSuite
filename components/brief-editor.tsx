@@ -29,6 +29,10 @@ export function BriefEditor({
       if (typeof detail !== "string" || detail.length === 0) return;
       setValue(detail);
       setAutoUpdated(true);
+      // As soon as the LLM starts filling in the brief, flip to Vista so the
+      // user sees rendered markdown instead of raw ** and backticks scrolling
+      // by in the textarea. They can still hit Edición to tweak.
+      setMode("view");
       requestAnimationFrame(() => {
         const el = textareaRef.current;
         if (el) el.scrollTop = el.scrollHeight;
