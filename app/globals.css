@@ -76,13 +76,15 @@ body {
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    90deg,
+    100deg,
     transparent 0%,
-    color-mix(in oklab, var(--color-primary) 12%, transparent) 50%,
+    color-mix(in oklab, var(--color-primary) 24%, transparent) 45%,
+    color-mix(in oklab, var(--color-primary) 32%, transparent) 50%,
+    color-mix(in oklab, var(--color-primary) 24%, transparent) 55%,
     transparent 100%
   );
   transform: translateX(-100%);
-  animation: sheen-slide 2.4s infinite ease-in-out;
+  animation: sheen-slide 1.8s infinite ease-in-out;
   pointer-events: none;
 }
 @keyframes sheen-slide {

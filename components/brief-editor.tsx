@@ -23,14 +23,9 @@ export function BriefEditor({
 }) {
   const [value, setValue] = useState(initialBrief);
   const [target, setTarget] = useState(initialBrief);
-  const valueRef = useRef(initialBrief);
   const [autoUpdated, setAutoUpdated] = useState(false);
   const [mode, setMode] = useState<"view" | "edit">(initialBrief.trim().length > 0 ? "view" : "edit");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Keep a ref in sync so the animation loop can read the latest committed
-  // value without adding React deps that would restart the loop each tick.
-  useEffect(() => { valueRef.current = value; }, [value]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -44,27 +39,20 @@ export function BriefEditor({
     return () => window.removeEventListener("brief-live", handler);
   }, []);
 
-  // Animate value toward target. If the target is a strict extension of the
-  // current value, reveal ~30 chars per frame (about 1800 chars/sec). If it's
-  // a replacement (user edited, or brief_md changed non-monotonically), jump
-  // directly — the animation is only meant to smooth AI streaming.
+  // Animate value toward target. If target is a strict extension, add ~30
+  // chars per tick. If target is a REWRITE (not a prefix of current value),
+  // wipe visible value first so the next tick types the new content from
+  // empty — user sees the model rewriting instead of a jarring snap.
   useEffect(() => {
-    if (value === target) return;
-    let cancelled = false;
-    const step = () => {
-      if (cancelled) return;
-      const cur = valueRef.current;
-      if (cur === target) return;
-      if (!target.startsWith(cur)) {
-        setValue(target);
-        return;
-      }
-      const nextLen = Math.min(target.length, cur.length + 30);
-      setValue(target.slice(0, nextLen));
-      requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-    return () => { cancelled = true; };
+    if (target === value) return;
+    if (!target.startsWith(value)) {
+      setValue("");
+      return;
+    }
+    const timer = setTimeout(() => {
+      setValue(target.slice(0, Math.min(target.length, value.length + 30)));
+    }, 16);
+    return () => clearTimeout(timer);
   }, [target, value]);
 
   // Keep the textarea scrolled to the bottom while the LLM is streaming so
