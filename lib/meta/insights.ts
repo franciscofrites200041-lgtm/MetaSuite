@@ -179,3 +179,50 @@ export const SAMPLE_CAMPAIGN_INSIGHTS: CampaignInsight[] = [
     conversions: 9,
   },
 ];
+
+// Sample activity for the "Actividad del agente" panel when there's no data
+// yet. Same shape as the real query result on page.tsx so the row renderer
+// can stay identical.
+export type BudgetChangeRow = {
+  id: string;
+  campaign_name: string;
+  old_cents: number | null;
+  new_cents: number;
+  reason: string;
+  by: "agent" | "user";
+  when: Date;
+};
+
+const HOUR = 3600 * 1000;
+export const SAMPLE_BUDGET_CHANGES: BudgetChangeRow[] = [
+  {
+    id: "sbc-1",
+    campaign_name: "AUGUR · Leads showroom",
+    old_cents: 1500,
+    new_cents: 2500,
+    reason:
+      "CTR sostenido en 2.8% y CPA en $8.10 (meta $12). Le muevo $10/día desde 'Vender zapatos', que viene con CPA $28.",
+    by: "agent",
+    when: new Date(Date.now() - 2 * HOUR),
+  },
+  {
+    id: "sbc-2",
+    campaign_name: "AUGUR · Vender más zapatos verano",
+    old_cents: 2500,
+    new_cents: 1500,
+    reason:
+      "Bajo el diario $10 hasta ver si el CPA baja de $28. Si en 48h no mejora, la pauso.",
+    by: "agent",
+    when: new Date(Date.now() - 2 * HOUR - 12 * 60 * 1000),
+  },
+  {
+    id: "sbc-3",
+    campaign_name: "AUGUR · Leads showroom",
+    old_cents: null,
+    new_cents: 1500,
+    reason:
+      "Campaña recién publicada con $15/día inicial. Mismo presupuesto que aprobaste en el chat.",
+    by: "agent",
+    when: new Date(Date.now() - 26 * HOUR),
+  },
+];
