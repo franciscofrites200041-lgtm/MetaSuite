@@ -42,16 +42,25 @@ export function ObjectiveChat({
         <select
           value={modelId}
           onChange={(e) => setModelId(e.target.value)}
-          className="hairline rounded-md px-2 py-1 text-[12px] bg-transparent outline-none"
+          className="hairline rounded-md px-2 py-1 text-[12px] bg-transparent outline-none max-w-[240px]"
           style={{ background: "var(--color-surface-2)", fontFamily: "var(--font-mono)" }}
         >
-          {models.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.label}
-            </option>
+          {Object.entries(
+            models.reduce<Record<string, Model[]>>((acc, m) => {
+              (acc[m.provider] ||= []).push(m);
+              return acc;
+            }, {})
+          ).map(([provider, list]) => (
+            <optgroup key={provider} label={provider}>
+              {list.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
-        <span className="ml-2 text-[11px]" style={{ color: "var(--color-ink-subtle)" }}>
+        <span className="ml-2 text-[11px] truncate" style={{ color: "var(--color-ink-subtle)" }}>
           {models.find((m) => m.id === modelId)?.hint ?? ""}
         </span>
       </div>
