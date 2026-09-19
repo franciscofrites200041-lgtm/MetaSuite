@@ -160,8 +160,16 @@ body {
 }
 
 @keyframes wordmark-wave {
+  /* Amplitude in em so it stays proportional at every size — subtle
+     at 15px sidebar mark, unmistakable at 100px hero. */
   0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-2.5px); }
+  50%      { transform: translateY(-0.08em); }
+}
+
+.wordmark-hero {
+  font-size: clamp(56px, 9vw, 112px);
+  line-height: 0.88;
+  letter-spacing: -0.035em;
 }
 
 @keyframes wordmark-hue {

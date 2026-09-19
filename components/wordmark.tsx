@@ -11,13 +11,18 @@
 // All animation is pure CSS keyframes (see globals.css). This can stay a
 // server component and works inside server layouts.
 
-type WordmarkSize = "sm" | "md" | "lg" | "xl";
+type WordmarkSize = "sm" | "md" | "lg" | "xl" | "xxl" | "hero";
 
+// Sizes progress from sidebar (sm) up to auth hero (hero). "hero" uses
+// clamp() so it fills the editorial column on desktop and shrinks
+// gracefully on mobile.
 const SIZE_CLASS: Record<WordmarkSize, string> = {
   sm: "text-[15px]",
   md: "text-[20px]",
   lg: "text-[38px] leading-[1]",
   xl: "text-[56px] leading-[0.95]",
+  xxl: "text-[88px] leading-[0.9]",
+  hero: "wordmark-hero",
 };
 
 export function Wordmark({
