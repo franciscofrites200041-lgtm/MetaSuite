@@ -1,10 +1,15 @@
-// Wordmark for Toruk AUGUR. Kinetic-type entry animation (staggered fade +
-// y-offset + blur), then a subtle color-primary shimmer that sweeps across
-// the letters every ~8s once the entry finishes. No square, no icon —
-// just typographic identity. Styles live in globals.css.
+// Wordmark for Toruk AUGUR. No square, no icon — typographic identity only.
+// Each character has TWO layered spans:
+//   - outer .wordmark-char: handles the continuous ambient wave (subtle
+//     vertical undulation + color pulse cycling ink → primary → ink,
+//     both staggered per-index so a wave visibly rolls through the word).
+//   - inner .wordmark-char-inner: handles the one-shot entry animation
+//     (letters tumble in from below with rotateX, scale and blur clearing).
+// Keeping transform-targeting animations on different elements avoids the
+// composite-animation conflict where the wave would erase the entry motion.
 //
-// Deliberately a Server Component: the animation is pure CSS keyframes,
-// no state or effects needed. That keeps it usable in server layouts.
+// All animation is pure CSS keyframes (see globals.css). This can stay a
+// server component and works inside server layouts.
 
 type WordmarkSize = "sm" | "md" | "lg" | "xl";
 
@@ -38,7 +43,7 @@ export function Wordmark({
           style={{ ["--i" as string]: i }}
           aria-hidden
         >
-          {ch === " " ? " " : ch}
+          <span className="wordmark-char-inner">{ch === " " ? " " : ch}</span>
         </span>
       ))}
     </span>
