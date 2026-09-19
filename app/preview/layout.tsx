@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Wordmark } from "@/components/wordmark";
 
 // Preview shell — mimics the (app) dashboard chrome but with mock data
 // and NO auth. Public route. Not for production.
@@ -14,11 +15,8 @@ export default function PreviewLayout({ children }: { children: React.ReactNode 
         className="w-[240px] shrink-0 flex flex-col hairline-r"
         style={{ background: "var(--color-surface-1)" }}
       >
-        <div className="px-4 pt-5 pb-4 flex items-center gap-2">
-          <span aria-hidden className="inline-block h-4 w-4 rounded-[3px]" style={{ background: "var(--color-primary)" }} />
-          <span className="font-medium tracking-tight text-[15px]" style={{ fontFamily: "var(--font-display)" }}>
-            Toruk AUGUR
-          </span>
+        <div className="px-4 pt-5 pb-4">
+          <Wordmark text="Toruk AUGUR" size="sm" />
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2">

@@ -3,8 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Wordmark } from "@/components/wordmark";
 
 type Company = { id: string; name: string; slug: string; logo_url?: string | null };
+
+const STORAGE_KEY = "sidebar-hidden-v1";
 
 function initials(nameOrEmail: string): string {
   const parts = nameOrEmail.trim().split(/\s+/);
@@ -25,16 +29,124 @@ export function Sidebar({
   const isHome = pathname === "/app";
   const displayName = user.name ?? user.email;
 
+  const [hidden, setHidden] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    try {
+      setHidden(localStorage.getItem(STORAGE_KEY) === "true");
+    } catch {}
+    setHydrated(true);
+  }, []);
+  useEffect(() => {
+    if (!hydrated) return;
+    try { localStorage.setItem(STORAGE_KEY, String(hidden)); } catch {}
+  }, [hidden, hydrated]);
+
+  if (hydrated && hidden) {
+    return (
+      <div
+        className="shrink-0 flex flex-col hairline-r"
+        style={{ width: 44, background: "var(--color-surface-1)" }}
+      >
+        <button
+          type="button"
+          onClick={() => setHidden(false)}
+          className="h-11 flex items-center justify-center hover:bg-[color:var(--color-surface-2)]"
+          style={{ color: "var(--color-ink-muted)" }}
+          title="Mostrar menú"
+          aria-label="Mostrar menú"
+        >
+          ›
+        </button>
+        <div className="hairline-t" />
+        <Link
+          href="/app"
+          className="h-11 flex items-center justify-center hover:bg-[color:var(--color-surface-2)]"
+          title="Inicio"
+          aria-label="Inicio"
+          style={{ color: isHome ? "var(--color-primary)" : "var(--color-ink-muted)" }}
+        >
+          ⌂
+        </Link>
+        <div className="flex-1 overflow-y-auto py-1">
+          {companies.map((c) => {
+            const active = c.slug === activeSlug;
+            return (
+              <Link
+                key={c.id}
+                href={`/app/c/${c.slug}`}
+                title={c.name}
+                aria-label={c.name}
+                className="h-11 flex items-center justify-center hover:bg-[color:var(--color-surface-2)]"
+                style={{
+                  background: active ? "color-mix(in oklab, var(--color-primary) 8%, transparent)" : undefined,
+                }}
+              >
+                {c.logo_url ? (
+                  <Image src={c.logo_url} alt="" width={22} height={22} className="rounded-[3px] object-cover" unoptimized />
+                ) : (
+                  <span
+                    aria-hidden
+                    className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-[3px] text-[10px]"
+                    style={{
+                      background: "var(--color-surface-2)",
+                      color: active ? "var(--color-primary)" : "var(--color-ink-muted)",
+                      border: "1px solid var(--color-hairline)",
+                    }}
+                  >
+                    {c.name.slice(0, 1).toUpperCase()}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+          <Link
+            href="/app/companies/new"
+            title="Nueva empresa"
+            aria-label="Nueva empresa"
+            className="h-11 flex items-center justify-center hover:bg-[color:var(--color-surface-2)]"
+            style={{ color: "var(--color-ink-subtle)" }}
+          >
+            +
+          </Link>
+        </div>
+        <Link
+          href="/app/settings"
+          title={displayName}
+          aria-label="Configuración"
+          className="mt-auto h-12 flex items-center justify-center hairline-t hover:bg-[color:var(--color-surface-2)]"
+        >
+          <span
+            aria-hidden
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-medium"
+            style={{ background: "var(--color-surface-2)", color: "var(--color-ink-muted)", border: "1px solid var(--color-hairline)" }}
+          >
+            {initials(displayName)}
+          </span>
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <aside
       className="w-[248px] shrink-0 flex flex-col hairline-r"
       style={{ background: "var(--color-surface-1)" }}
     >
-      <div className="px-4 pt-5 pb-4 flex items-center gap-2">
-        <span aria-hidden className="inline-block h-4 w-4 rounded-[3px]" style={{ background: "var(--color-primary)" }} />
-        <Link href="/app" className="font-medium tracking-tight text-[15px]" style={{ fontFamily: "var(--font-display)" }}>
-          Toruk AUGUR
+      <div className="px-4 pt-5 pb-4 flex items-center justify-between gap-2">
+        <Link href="/app" className="min-w-0">
+          <Wordmark text="Toruk AUGUR" size="sm" />
         </Link>
+        <button
+          type="button"
+          onClick={() => setHidden(true)}
+          className="shrink-0 rounded-md w-6 h-6 flex items-center justify-center text-[13px] hairline hover:bg-[color:var(--color-surface-2)]"
+          style={{ background: "var(--color-surface-1)", color: "var(--color-ink-subtle)" }}
+          title="Ocultar menú"
+          aria-label="Ocultar menú"
+        >
+          ‹
+        </button>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2">

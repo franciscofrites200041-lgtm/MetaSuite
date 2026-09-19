@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Wordmark } from "@/components/wordmark";
 
 export default function NotFound() {
   return (
@@ -7,9 +8,9 @@ export default function NotFound() {
       style={{ background: "var(--color-canvas)" }}
     >
       <div className="text-center max-w-[440px]">
-        <p className="mb-3 text-[11px] tracking-[0.16em] uppercase" style={{ color: "var(--color-ink-subtle)" }}>
-          Toruk AUGUR
-        </p>
+        <div className="mb-4">
+          <Wordmark text="Toruk AUGUR" size="sm" />
+        </div>
         <h1
           className="text-[40px] leading-[1.05] tracking-tight mb-3"
           style={{ fontFamily: "var(--font-display)", fontWeight: 500 }}

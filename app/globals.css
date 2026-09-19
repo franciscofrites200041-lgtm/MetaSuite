@@ -96,6 +96,102 @@ body {
   50% { opacity: 1; }
 }
 
+/* ─────────────────────────  Wordmark  ─────────────────────────
+   Kinetic-type entry: each letter fades in from below with a slight blur,
+   staggered by --i * 55ms. After entry completes (~1.7s), an ambient
+   shimmer sweeps a primary-tinted highlight across the letters every
+   8s. Uses background-clip: text on the parent so the sweep passes
+   through all letters as one continuous surface. Base color at rest is
+   the ink token. */
+.wordmark {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  background: linear-gradient(
+    100deg,
+    var(--color-ink) 0%,
+    var(--color-ink) 42%,
+    color-mix(in oklab, var(--color-primary) 92%, var(--color-ink)) 50%,
+    var(--color-ink) 58%,
+    var(--color-ink) 100%
+  );
+  background-size: 260% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: wordmark-shimmer 8.5s infinite ease-in-out;
+  animation-delay: 1.7s;
+}
+
+.wordmark-char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(0.65em) scale(0.98);
+  filter: blur(6px);
+  animation: wordmark-char-in 720ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: calc(var(--i) * 55ms + 120ms);
+  will-change: transform, opacity, filter;
+}
+
+@keyframes wordmark-char-in {
+  0% {
+    opacity: 0;
+    transform: translateY(0.65em) scale(0.98);
+    filter: blur(6px);
+  }
+  55% {
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes wordmark-shimmer {
+  0% { background-position: 130% 0; }
+  45%, 55% { background-position: -30% 0; }
+  100% { background-position: -30% 0; }
+}
+
+/* Auth pages: input styling with a slightly larger touch target and a
+   focus ring that matches the design tokens. */
+.auth-input {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-hairline);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.auth-input::placeholder { color: var(--color-ink-tertiary); }
+.auth-input:hover { border-color: var(--color-hairline-strong); }
+.auth-input:focus {
+  border-color: color-mix(in oklab, var(--color-primary) 55%, transparent);
+  background: var(--color-surface-1);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 12%, transparent);
+}
+
+/* Accessibility: respect the user's motion preference. */
+@media (prefers-reduced-motion: reduce) {
+  .wordmark {
+    animation: none;
+    background-position: 100% 0;
+  }
+  .wordmark-char {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
 /* Markdown rendering inside chat bubbles. Kept intentionally close to the
    base font size so the bubble doesn't feel like a mini-blog post. */
 .chat-prose {
