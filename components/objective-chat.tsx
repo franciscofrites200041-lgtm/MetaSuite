@@ -105,7 +105,16 @@ export function ObjectiveChat({
                 content={renderContent(m)}
               />
             ))}
-            {busy && messages[messages.length - 1]?.role !== "assistant" ? <Typing /> : null}
+            {(() => {
+              // Show the thinking indicator whenever the API is busy AND we
+              // don't yet have visible assistant text. During tool calls the
+              // last message can already be role=assistant but with zero text
+              // — hiding the indicator there is what made the UI look frozen.
+              if (!busy) return null;
+              const last = messages[messages.length - 1];
+              const hasText = last?.role === "assistant" && renderContent(last).trim().length > 0;
+              return hasText ? null : <Typing />;
+            })()}
           </div>
         )}
       </div>
@@ -178,13 +187,57 @@ function Bubble({ role, content }: { role: "user" | "assistant" | "system"; cont
 }
 
 function Typing() {
+  const [msg, setMsg] = useState("Pensando…");
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    // Rotating status text — honest about the wait without pretending to know
+    // what the model is doing. Times are cumulative.
+    const stages: Array<{ at: number; msg: string }> = [
+      { at: 4, msg: "Buscando en el brief y el historial…" },
+      { at: 9, msg: "Elaborando la respuesta…" },
+      { at: 16, msg: "Sigo procesando, aguantame…" },
+      { at: 28, msg: "El modelo está lento hoy — no te fuiste, esto sigue vivo." },
+      { at: 50, msg: "Todavía trabajando. Si querés probá otro modelo más rápido en el selector de arriba." },
+    ];
+    const start = Date.now();
+    const id = setInterval(() => {
+      const s = Math.floor((Date.now() - start) / 1000);
+      setElapsed(s);
+      const active = [...stages].reverse().find((x) => s >= x.at);
+      setMsg(active?.msg ?? "Pensando…");
+    }, 500);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <div className="flex justify-start">
       <div
-        className="rounded-lg px-4 py-3 text-[13px]"
-        style={{ background: "var(--color-surface-1)", color: "var(--color-ink-subtle)", border: "1px solid var(--color-hairline)" }}
+        className="thinking-sheen rounded-lg px-4 py-3 flex items-center gap-3 min-w-[220px]"
+        style={{
+          background: "var(--color-ai-surface)",
+          border: "1px solid var(--color-hairline)",
+          borderLeft: "3px solid color-mix(in oklab, var(--color-primary) 60%, transparent)",
+        }}
       >
-        Pensando…
+        <div className="flex gap-1 shrink-0" aria-hidden="true">
+          <span className="typing-dot" style={{ animationDelay: "0ms" }} />
+          <span className="typing-dot" style={{ animationDelay: "160ms" }} />
+          <span className="typing-dot" style={{ animationDelay: "320ms" }} />
+        </div>
+        <div className="flex flex-col min-w-0">
+          <span className="text-[13px] truncate" style={{ color: "var(--color-ink-muted)" }}>
+            {msg}
+          </span>
+          {elapsed >= 3 ? (
+            <span
+              className="text-[10px] mt-0.5"
+              style={{ color: "var(--color-ink-subtle)", fontFamily: "var(--font-mono)" }}
+            >
+              {elapsed}s
+            </span>
+          ) : null}
+        </div>
       </div>
     </div>
   );
