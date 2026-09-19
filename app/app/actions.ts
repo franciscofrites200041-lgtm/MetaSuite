@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 function slugify(input: string): string {
   return (
@@ -21,6 +22,8 @@ export async function createCompany(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const industry = String(formData.get("industry") ?? "").trim() || null;
   const description = String(formData.get("description") ?? "").trim() || null;
+  const websiteUrl = String(formData.get("website_url") ?? "").trim() || null;
+  const logoFile = formData.get("logo") as File | null;
   if (!name) redirect("/app/companies/new?error=nombre");
 
   const supabase = await supabaseServer();
@@ -50,13 +53,40 @@ export async function createCompany(formData: FormData) {
     slug = `${baseSlug}-${i}`;
   }
 
+  const insertPayload: Record<string, string | null> = {
+    account_id: accountId,
+    name,
+    slug,
+    industry,
+    description,
+    website_url: websiteUrl,
+  };
+
   const { data: created, error } = await supabase
     .from("companies")
-    .insert({ account_id: accountId, name, slug, industry, description })
-    .select("slug")
+    .insert(insertPayload)
+    .select("id, slug")
     .single();
   if (error || !created) {
     redirect(`/app/companies/new?error=${encodeURIComponent(error?.message ?? "insert_failed")}`);
+  }
+
+  // Optional logo upload post-insert (needs company id for the storage key).
+  if (logoFile && logoFile.size > 0) {
+    if (logoFile.size <= 4 * 1024 * 1024) {
+      const ext = (logoFile.name.split(".").pop() ?? "png").toLowerCase().slice(0, 5);
+      const key = `${created!.id}/${Date.now()}.${ext}`;
+      const admin = supabaseAdmin();
+      const bytes = new Uint8Array(await logoFile.arrayBuffer());
+      const { error: upErr } = await admin.storage.from("company-logos").upload(key, bytes, {
+        contentType: logoFile.type || "image/png",
+        upsert: true,
+      });
+      if (!upErr) {
+        const { data: publicUrl } = admin.storage.from("company-logos").getPublicUrl(key);
+        await supabase.from("companies").update({ logo_url: publicUrl.publicUrl }).eq("id", created!.id);
+      }
+    }
   }
 
   revalidatePath("/app");
