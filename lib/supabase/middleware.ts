@@ -4,7 +4,7 @@ import { supabaseEnvOk } from "./env";
 
 // Routes that don't need an auth check. Skipping getUser() here saves a
 // full Supabase round-trip (~150-500ms) per navigation to these paths.
-const PUBLIC_PREFIXES = ["/login", "/signup", "/auth", "/preview", "/_next", "/favicon", "/api/meta/callback"];
+const PUBLIC_PREFIXES = ["/login", "/signup", "/auth", "/preview", "/privacy", "/terms", "/_next", "/favicon", "/api/meta/callback"];
 
 function isPublic(pathname: string): boolean {
   if (pathname === "/") return true;
