@@ -54,6 +54,8 @@ export function ObjectiveChat({
     body: { threadId, modelId },
   });
 
+  const busy = status === "streaming" || status === "submitted";
+
   // Guard against a thread pointing at a model that vanished from the live
   // OpenRouter catalog (retired, renamed, filtered out). Coerce to the first
   // available Anthropic model — or the first in the list if Anthropic is gone
@@ -77,7 +79,45 @@ export function ObjectiveChat({
     ta.style.height = `${Math.min(ta.scrollHeight, 200)}px`;
   }, [input]);
 
-  const busy = status === "streaming" || status === "submitted";
+  // Pending questionnaire — extracted from the last assistant message. If the
+  // assistant is streaming (busy), we wait until it finishes before showing
+  // the panel, otherwise partial ```suggestions``` blocks would flicker.
+  const pendingQuestions = useMemo<PendingQuestion[]>(() => {
+    if (busy) return [];
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== "assistant") return [];
+    const text = renderContent(last as ChatMessage);
+    return extractQuestions(text).questions;
+  }, [messages, busy]);
+
+  // Parallel array of answers per pending question. null = unanswered.
+  // Resets whenever the questionnaire changes (new turn → new questions).
+  const [answers, setAnswers] = useState<Array<string | null>>([]);
+  useEffect(() => {
+    setAnswers(pendingQuestions.map(() => null));
+  }, [pendingQuestions]);
+
+  // Compose a single user message combining the answered questions and any
+  // extra text from the composer. Skips unanswered questions. Empty = no-op.
+  async function submitCombined() {
+    const parts: string[] = [];
+    for (let i = 0; i < pendingQuestions.length; i++) {
+      const a = answers[i];
+      if (a && a.trim().length > 0) {
+        parts.push(`- ${pendingQuestions[i].question} — ${a.trim()}`);
+      }
+    }
+    const extra = input.trim();
+    const combined = [parts.join("\n"), extra].filter(Boolean).join("\n\n");
+    if (!combined) return;
+    setAnswers([]);
+    // useChat.append handles appending the user message and triggering the
+    // assistant response. Clearing composer input via handleInputChange.
+    handleInputChange({ target: { value: "" } } as React.ChangeEvent<HTMLTextAreaElement>);
+    await append({ role: "user", content: combined });
+  }
+
+  const canSend = !busy && (input.trim().length > 0 || answers.some((a) => a && a.trim().length > 0));
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -165,18 +205,16 @@ export function ObjectiveChat({
           <EmptyState />
         ) : (
           <div className="flex flex-col gap-3 max-w-[720px] mx-auto">
-            {messages.map((m, idx) => {
+            {messages.map((m) => {
               const text = renderContent(m as ChatMessage);
               const invocations = extractToolInvocations(m as ChatMessage);
               const role = m.role as "user" | "assistant" | "system";
-              const isLast = idx === messages.length - 1;
               return (
                 <MessageBlock
                   key={m.id}
                   role={role}
                   text={text}
                   invocations={invocations}
-                  onSuggestionPick={isLast && !busy ? (s) => { void append({ role: "user", content: s }); } : undefined}
                 />
               );
             })}
@@ -194,31 +232,61 @@ export function ObjectiveChat({
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="hairline-t px-8 py-4">
-        <div className="max-w-[720px] mx-auto flex gap-2">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={handleInputChange}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                (e.currentTarget.form as HTMLFormElement).requestSubmit();
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (pendingQuestions.length > 0) {
+            void submitCombined();
+          } else {
+            handleSubmit(e);
+          }
+        }}
+        className="hairline-t px-8 py-4"
+      >
+        <div className="max-w-[720px] mx-auto flex flex-col gap-3">
+          {pendingQuestions.length > 0 ? (
+            <PendingPanel
+              questions={pendingQuestions}
+              answers={answers}
+              onPick={(qIdx, value) => {
+                setAnswers((prev) => {
+                  const next = [...prev];
+                  next[qIdx] = next[qIdx] === value ? null : value;
+                  return next;
+                });
+              }}
+            />
+          ) : null}
+
+          <div className="flex gap-2">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={handleInputChange}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  (e.currentTarget.form as HTMLFormElement).requestSubmit();
+                }
+              }}
+              placeholder={
+                pendingQuestions.length > 0
+                  ? "Agregá contexto extra o mandá solo con las opciones seleccionadas…"
+                  : "Contale a la IA sobre este objetivo…"
               }
-            }}
-            placeholder="Contale a la IA sobre este objetivo…"
-            rows={1}
-            className="flex-1 hairline rounded-md px-3 py-2.5 text-[14px] outline-none resize-none overflow-y-auto"
-            style={{ background: "var(--color-surface-2)", maxHeight: 200, minHeight: 42 }}
-          />
-          <button
-            type="submit"
-            disabled={busy || !input.trim()}
-            className="rounded-md px-4 text-[13px] font-medium disabled:opacity-50"
-            style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
-          >
-            Enviar
-          </button>
+              rows={1}
+              className="flex-1 hairline rounded-md px-3 py-2.5 text-[14px] outline-none resize-none overflow-y-auto"
+              style={{ background: "var(--color-surface-2)", maxHeight: 200, minHeight: 42 }}
+            />
+            <button
+              type="submit"
+              disabled={!canSend}
+              className="rounded-md px-4 text-[13px] font-medium disabled:opacity-50"
+              style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
+            >
+              Enviar
+            </button>
+          </div>
         </div>
       </form>
     </>
@@ -284,36 +352,99 @@ function extractToolInvocations(m: ChatMessage): Invocation[] {
   return [...groups.values()];
 }
 
-// Pulls a ```suggestions ...``` fenced block out of assistant markdown and
-// returns the prose + the parsed suggestion lines separately. If no block,
-// suggestions is empty.
-function splitSuggestions(text: string): { markdown: string; suggestions: string[] } {
-  const re = /```suggestions\s*\n([\s\S]*?)```/;
-  const m = text.match(re);
-  if (!m) return { markdown: text, suggestions: [] };
-  const suggestions = m[1]
-    .split("\n")
-    .map((l) => l.replace(/^[\s\-*•]+/, "").trim())
-    .filter(Boolean);
+function PendingPanel({
+  questions,
+  answers,
+  onPick,
+}: {
+  questions: PendingQuestion[];
+  answers: Array<string | null>;
+  onPick: (qIdx: number, value: string) => void;
+}) {
+  return (
+    <div
+      className="hairline rounded-lg px-4 py-3 flex flex-col gap-3"
+      style={{ background: "var(--color-surface-1)" }}
+    >
+      <div className="text-[10px] tracking-wider uppercase" style={{ color: "var(--color-ink-subtle)" }}>
+        Elegí para responder
+      </div>
+      {questions.map((q, qIdx) => (
+        <div key={qIdx} className="flex flex-col gap-2">
+          <div className="text-[13px]" style={{ color: "var(--color-ink)", fontFamily: "var(--font-display)", fontWeight: 500 }}>
+            {q.question}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {q.options.map((opt) => {
+              const selected = answers[qIdx] === opt;
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => onPick(qIdx, opt)}
+                  className="rounded-full px-3 py-1.5 text-[12.5px] transition-colors"
+                  style={{
+                    background: selected
+                      ? "color-mix(in oklab, var(--color-primary) 14%, var(--color-surface-2))"
+                      : "var(--color-surface-2)",
+                    border: `1px solid ${
+                      selected
+                        ? "color-mix(in oklab, var(--color-primary) 60%, var(--color-hairline))"
+                        : "var(--color-hairline)"
+                    }`,
+                    color: selected ? "var(--color-primary)" : "var(--color-ink)",
+                  }}
+                >
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+type PendingQuestion = { question: string; options: string[] };
+
+// Pulls ALL ```suggestions``` fenced blocks out of an assistant message. Each
+// block's first line is treated as the question (must end with `?`). Remaining
+// lines are the options. Blocks without a valid question line get dropped —
+// the LLM might be mid-stream, we skip until it's structured.
+function extractQuestions(text: string): { markdown: string; questions: PendingQuestion[] } {
+  const re = /```suggestions\s*\n([\s\S]*?)```/g;
+  const questions: PendingQuestion[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const lines = m[1]
+      .split("\n")
+      .map((l) => l.replace(/^[\s\-*•]+/, "").trim())
+      .filter(Boolean);
+    if (lines.length < 2) continue;
+    const first = lines[0];
+    if (!first.endsWith("?") && !first.endsWith("？")) continue;
+    questions.push({ question: first, options: lines.slice(1) });
+  }
   const markdown = text.replace(re, "").trim();
-  return { markdown, suggestions };
+  return { markdown, questions };
 }
 
 function MessageBlock({
   role,
   text,
   invocations,
-  onSuggestionPick,
 }: {
   role: "user" | "assistant" | "system";
   text: string;
   invocations: Invocation[];
-  onSuggestionPick?: (suggestion: string) => void;
 }) {
   if (role === "system") return null;
   const isUser = role === "user";
-  const { markdown, suggestions } = !isUser ? splitSuggestions(text) : { markdown: text, suggestions: [] };
-  const hasText = markdown.trim().length > 0;
+  // For assistant messages, strip the ```suggestions``` blocks — those get
+  // rendered as a questionnaire above the composer instead.
+  const stripped = !isUser ? extractQuestions(text).markdown : text;
+  const hasText = stripped.trim().length > 0;
   return (
     <div className={`flex flex-col gap-1.5 ${isUser ? "items-end" : "items-start"}`}>
       {hasText ? (
@@ -325,30 +456,10 @@ function MessageBlock({
           }}
         >
           {isUser ? (
-            <div className="whitespace-pre-wrap">{text}</div>
+            <div className="whitespace-pre-wrap">{stripped}</div>
           ) : (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{stripped}</ReactMarkdown>
           )}
-        </div>
-      ) : null}
-      {suggestions.length > 0 && onSuggestionPick ? (
-        <div className="flex flex-col gap-2 w-full max-w-[620px] mt-1">
-          {suggestions.map((s, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => onSuggestionPick(s)}
-              className="suggestion-card group"
-            >
-              <span className="flex-1">{s}</span>
-              <span
-                className="suggestion-arrow shrink-0 ml-3"
-                aria-hidden
-              >
-                →
-              </span>
-            </button>
-          ))}
         </div>
       ) : null}
       {invocations.length > 0 ? (

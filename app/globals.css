@@ -177,46 +177,6 @@ body {
   50%      { color: color-mix(in oklab, var(--color-primary) 78%, var(--color-ink)); }
 }
 
-/* Chat suggestion cards — Claude-style. Full-width buttons stacked
-   vertically under an assistant message. Hairline border in rest state,
-   primary-tinted border + surface lift on hover. Right arrow slides on
-   hover. */
-.suggestion-card {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  text-align: left;
-  padding: 12px 16px;
-  border-radius: 10px;
-  border: 1px solid var(--color-hairline);
-  background: var(--color-surface-1);
-  color: var(--color-ink);
-  font-size: 14px;
-  line-height: 1.4;
-  cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    background 0.15s ease,
-    transform 0.1s ease,
-    box-shadow 0.15s ease;
-}
-.suggestion-card:hover {
-  border-color: color-mix(in oklab, var(--color-primary) 55%, var(--color-hairline));
-  background: var(--color-surface-2);
-  box-shadow: 0 1px 0 color-mix(in oklab, var(--color-primary) 8%, transparent);
-}
-.suggestion-card:active {
-  transform: translateY(1px);
-}
-.suggestion-arrow {
-  color: var(--color-ink-tertiary);
-  transition: transform 0.15s ease, color 0.15s ease;
-}
-.suggestion-card:hover .suggestion-arrow {
-  color: var(--color-primary);
-  transform: translateX(3px);
-}
-
 /* Auth pages: input styling with a slightly larger touch target and a
    focus ring that matches the design tokens. */
 .auth-input {
