@@ -49,9 +49,12 @@ export function BriefEditor({
       setValue("");
       return;
     }
+    // Typewriter cadence: 6 chars every 30ms ≈ 200 chars/sec. Fast enough
+    // not to bore, slow enough that eyes register the writing motion. Faster
+    // than reading speed, slower than raw LLM streaming.
     const timer = setTimeout(() => {
-      setValue(target.slice(0, Math.min(target.length, value.length + 30)));
-    }, 16);
+      setValue(target.slice(0, Math.min(target.length, value.length + 6)));
+    }, 30);
     return () => clearTimeout(timer);
   }, [target, value]);
 

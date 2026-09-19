@@ -5,69 +5,31 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { Model } from "@/lib/models";
+import { DEFAULT_MODEL_ID } from "@/lib/models";
 
 type InitialMsg = { id: string; role: "user" | "assistant" | "system"; content: string };
 
 export function ObjectiveChat({
   threadId,
-  initialModelId,
-  models,
   initialMessages,
 }: {
   threadId: string;
-  initialModelId: string;
-  models: Model[];
   initialMessages: InitialMsg[];
 }) {
-  const [modelId, setModelId] = useState(initialModelId);
-  const [modelFilter, setModelFilter] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
   const seenResults = useRef<Set<string>>(new Set());
 
-  const filteredGroups = useMemo(() => {
-    const q = modelFilter.trim().toLowerCase();
-    const match = (m: Model) =>
-      !q ||
-      m.id.toLowerCase().includes(q) ||
-      m.label.toLowerCase().includes(q) ||
-      m.provider.toLowerCase().includes(q);
-    const groups: Record<string, Model[]> = {};
-    for (const m of models) {
-      if (!match(m)) continue;
-      (groups[m.provider] ||= []).push(m);
-    }
-    // Preserve incoming order (server already sorted it).
-    const orderedProviders: string[] = [];
-    for (const m of models) if (groups[m.provider] && !orderedProviders.includes(m.provider)) orderedProviders.push(m.provider);
-    return orderedProviders.map((p) => [p, groups[p]] as const);
-  }, [models, modelFilter]);
-
-  const selected = models.find((m) => m.id === modelId);
-
+  // Model is hardcoded at build time now — no user-facing selector.
   const { messages, input, handleInputChange, handleSubmit, status, append } = useChat({
     api: "/api/chat",
     id: threadId,
     initialMessages,
-    body: { threadId, modelId },
+    body: { threadId, modelId: DEFAULT_MODEL_ID },
   });
 
   const busy = status === "streaming" || status === "submitted";
-
-  // Guard against a thread pointing at a model that vanished from the live
-  // OpenRouter catalog (retired, renamed, filtered out). Coerce to the first
-  // available Anthropic model — or the first in the list if Anthropic is gone
-  // too — so the select box doesn't render whatever weird first option the
-  // browser picks when value doesn't match any <option>.
-  useEffect(() => {
-    if (models.length === 0) return;
-    if (!models.find((m) => m.id === modelId)) {
-      const fallback = models.find((m) => m.providerSlug === "anthropic") ?? models[0];
-      setModelId(fallback.id);
-    }
-  }, [models, modelId]);
 
   // Auto-grow the composer as the user types. Caps at ~7 lines (200px), then
   // becomes scrollable. Without this, long messages hide behind the fixed
@@ -190,43 +152,6 @@ export function ObjectiveChat({
 
   return (
     <>
-      <div className="px-8 py-2 flex items-center gap-2 hairline-b">
-        <span className="text-[11px] shrink-0" style={{ color: "var(--color-ink-subtle)" }}>
-          Modelo
-        </span>
-        <input
-          type="text"
-          value={modelFilter}
-          onChange={(e) => setModelFilter(e.target.value)}
-          placeholder={`Buscar en ${models.length} modelos…`}
-          className="hairline rounded-md px-2 py-1 text-[12px] outline-none w-[180px]"
-          style={{ background: "var(--color-surface-2)" }}
-        />
-        <select
-          value={modelId}
-          onChange={(e) => setModelId(e.target.value)}
-          className="hairline rounded-md px-2 py-1 text-[12px] bg-transparent outline-none max-w-[260px]"
-          style={{ background: "var(--color-surface-2)", fontFamily: "var(--font-mono)" }}
-        >
-          {filteredGroups.length === 0 ? (
-            <option value={modelId}>Sin resultados</option>
-          ) : (
-            filteredGroups.map(([provider, list]) => (
-              <optgroup key={provider} label={provider}>
-                {list.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.label}
-                  </option>
-                ))}
-              </optgroup>
-            ))
-          )}
-        </select>
-        <span className="ml-2 text-[11px] truncate" style={{ color: "var(--color-ink-subtle)" }}>
-          {selected?.hint ?? ""}
-        </span>
-      </div>
-
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-8 py-6">
         {messages.length === 0 ? (
           <EmptyState />

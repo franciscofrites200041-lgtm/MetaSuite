@@ -4,7 +4,6 @@ import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { DEFAULT_MODEL_ID } from "@/lib/models";
-import { getModelCatalog } from "@/lib/ai/catalog";
 import { ObjectiveChat } from "@/components/objective-chat";
 import { BriefEditor } from "@/components/brief-editor";
 import { ResizableRail } from "@/components/resizable-rail";
@@ -49,11 +48,10 @@ export default async function ObjectivePage({
     thread = data;
   }
 
-  const [{ data: messages }, { data: creatives }, { data: campaigns }, models] = await Promise.all([
+  const [{ data: messages }, { data: creatives }, { data: campaigns }] = await Promise.all([
     supabase.from("chat_messages").select("id, role, content, created_at").eq("thread_id", thread!.id).order("created_at"),
     supabase.from("ad_creatives").select("id, copy_text, image_prompt, image_url, meta_image_hash, status").eq("objective_id", objective.id).order("created_at", { ascending: false }),
     supabase.from("campaigns").select("id, name, status, meta_campaign_id").eq("objective_id", objective.id).order("created_at", { ascending: false }),
-    getModelCatalog(),
   ]);
 
   async function saveBrief(formData: FormData) {
@@ -105,8 +103,6 @@ export default async function ObjectivePage({
         </header>
         <ObjectiveChat
           threadId={thread!.id}
-          initialModelId={thread!.model_id ?? DEFAULT_MODEL_ID}
-          models={models}
           initialMessages={(messages ?? []).map((m) => ({
             id: m.id,
             role: m.role as "user" | "assistant" | "system",

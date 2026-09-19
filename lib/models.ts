@@ -10,7 +10,7 @@ export type Model = {
   intelligenceIndex: number | null;
 };
 
-// Sensible default that supports tool calling and is fast. Verified live in
-// OpenRouter catalog. If it disappears the /api/chat route falls back to
-// whatever is first in the fetched catalog.
-export const DEFAULT_MODEL_ID = "anthropic/claude-sonnet-4.6";
+// Hardcoded default. UI no longer lets the user switch — the model is a
+// product decision, not user config. Qwen3.8 Flash is fast, cheap, and
+// supports tool calling on OpenRouter.
+export const DEFAULT_MODEL_ID = "qwen/qwen3.8-flash";

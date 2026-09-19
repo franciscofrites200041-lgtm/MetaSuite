@@ -231,26 +231,25 @@ function Slide2() {
 }
 
 function Slide3() {
-  const providers = ["Anthropic", "OpenAI", "Google", "xAI", "Meta", "Mistral", "DeepSeek", "Qwen", "Moonshot", "Cohere"];
   return (
     <div className="flex flex-col justify-center h-full">
       <p className="mb-3 text-[11px] tracking-[0.2em] uppercase" style={{ color: "var(--color-ink-subtle)" }}>
-        Elegís el cerebro
+        El motor
       </p>
       <h2
         className="mb-4 text-[36px] md:text-[44px] leading-[1.05] tracking-tight"
         style={{ fontFamily: "var(--font-display)", fontWeight: 500, letterSpacing: "-0.02em" }}
       >
-        283 modelos. En un click.
+        Impulsado por Qwen3.8 Flash.
       </h2>
       <p className="mb-8 text-[16px] max-w-[620px]" style={{ color: "var(--color-ink-muted)" }}>
-        Cambiás el modelo desde el selector arriba del chat, en vivo. Cada objetivo puede tener el suyo.
-        El default es <strong style={{ color: "var(--color-ink)" }}>Claude Sonnet 4.6</strong> — el balance más sólido entre calidad y costo.
+        Corremos <strong style={{ color: "var(--color-ink)" }}>Qwen3.8 Flash</strong> vía OpenRouter para cada chat.
+        Rápido, barato, multilingüe fuerte y con soporte nativo de tool calling — el equilibrio justo entre latencia y calidad para pautar sin fricción.
       </p>
       <div className="flex flex-wrap gap-2">
-        {providers.map((p) => (
+        {["Multilingüe", "Tool calling", "Latencia baja", "Contexto largo", "OpenRouter"].map((tag) => (
           <span
-            key={p}
+            key={tag}
             className="hairline rounded-full px-3 py-1.5 text-[12px] tracking-wide"
             style={{
               background: "var(--color-surface-1)",
@@ -258,20 +257,9 @@ function Slide3() {
               fontFamily: "var(--font-mono)",
             }}
           >
-            {p}
+            {tag}
           </span>
         ))}
-        <span
-          className="rounded-full px-3 py-1.5 text-[12px] tracking-wide"
-          style={{
-            background: "color-mix(in oklab, var(--color-primary) 10%, var(--color-surface-1))",
-            color: "var(--color-primary)",
-            border: "1px solid color-mix(in oklab, var(--color-primary) 30%, transparent)",
-            fontFamily: "var(--font-mono)",
-          }}
-        >
-          + 30 más
-        </span>
       </div>
     </div>
   );
