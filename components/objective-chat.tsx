@@ -252,21 +252,36 @@ function renderContent(m: ChatMessage): string {
   return m.content ?? "";
 }
 
-type Invocation = { toolName: string; state: string; ok: boolean | null };
+type Invocation = { toolName: string; count: number; pending: boolean; failed: number };
 
+/** Groups tool invocations by name so that N successive `propose_creative`
+ *  calls in the same assistant turn collapse into one chip labelled with
+ *  the count instead of N repeated identical chips. */
 function extractToolInvocations(m: ChatMessage): Invocation[] {
   if (!m.parts) return [];
-  return m.parts
-    .filter((p) => p.type === "tool-invocation" && p.toolInvocation?.toolName)
-    .map((p) => {
-      const ti = p.toolInvocation!;
-      const result = ti.result as { ok?: boolean } | undefined;
-      return {
-        toolName: ti.toolName as string,
-        state: ti.state ?? "call",
-        ok: ti.state === "result" ? result?.ok ?? true : null,
-      };
-    });
+  const raw = m.parts.filter((p) => p.type === "tool-invocation" && p.toolInvocation?.toolName);
+  const groups = new Map<string, Invocation>();
+  for (const p of raw) {
+    const ti = p.toolInvocation!;
+    const name = ti.toolName as string;
+    const isResult = ti.state === "result";
+    const okFlag = (ti.result as { ok?: boolean } | undefined)?.ok;
+    const failed = isResult && okFlag === false;
+    const existing = groups.get(name);
+    if (existing) {
+      existing.count += 1;
+      if (!isResult) existing.pending = true;
+      if (failed) existing.failed += 1;
+    } else {
+      groups.set(name, {
+        toolName: name,
+        count: 1,
+        pending: !isResult,
+        failed: failed ? 1 : 0,
+      });
+    }
+  }
+  return [...groups.values()];
 }
 
 // Pulls a ```suggestions ...``` fenced block out of assistant markdown and
@@ -317,19 +332,21 @@ function MessageBlock({
         </div>
       ) : null}
       {suggestions.length > 0 && onSuggestionPick ? (
-        <div className="flex flex-wrap gap-1.5 max-w-[620px]">
+        <div className="flex flex-col gap-2 w-full max-w-[620px] mt-1">
           {suggestions.map((s, i) => (
             <button
               key={i}
               type="button"
               onClick={() => onSuggestionPick(s)}
-              className="hairline rounded-full px-3 py-1.5 text-[13px] text-left transition-all hover:border-[color:color-mix(in_oklab,var(--color-primary)_45%,var(--color-hairline))]"
-              style={{
-                background: "var(--color-surface-2)",
-                color: "var(--color-ink)",
-              }}
+              className="suggestion-card group"
             >
-              {s}
+              <span className="flex-1">{s}</span>
+              <span
+                className="suggestion-arrow shrink-0 ml-3"
+                aria-hidden
+              >
+                →
+              </span>
             </button>
           ))}
         </div>
@@ -345,23 +362,30 @@ function MessageBlock({
   );
 }
 
-const TOOL_LABELS: Record<string, string> = {
-  save_brief: "Actualizó el brief",
-  propose_creative: "Propuso una creativa",
-  approve_creative: "Aprobó una creativa",
-  build_campaign_in_meta: "Armó la campaña en Meta",
-  pause_or_activate: "Cambió estado en Meta",
+// Labels: [singular, pluralTemplate] where `{n}` gets replaced with count.
+const TOOL_LABELS: Record<string, [string, string]> = {
+  save_brief: ["Actualizó el brief", "Actualizó el brief {n} veces"],
+  propose_creative: ["Propuso una creativa", "Propuso {n} creativas"],
+  approve_creative: ["Aprobó una creativa", "Aprobó {n} creativas"],
+  build_campaign_in_meta: ["Armó la campaña en Meta", "Armó {n} campañas en Meta"],
+  pause_or_activate: ["Cambió estado en Meta", "Cambió {n} estados en Meta"],
 };
 
+function toolLabel(toolName: string, count: number): string {
+  const pair = TOOL_LABELS[toolName];
+  if (!pair) return `${toolName}${count > 1 ? ` ×${count}` : ""}`;
+  return count > 1 ? pair[1].replace("{n}", String(count)) : pair[0];
+}
+
 function ToolChip({ invocation }: { invocation: Invocation }) {
-  const label = TOOL_LABELS[invocation.toolName] ?? invocation.toolName;
-  const pending = invocation.state !== "result";
-  const ok = invocation.ok ?? true;
+  const label = toolLabel(invocation.toolName, invocation.count);
+  const pending = invocation.pending;
+  const anyFailed = invocation.failed > 0;
   const dotColor = pending
     ? "var(--color-warning)"
-    : ok
-      ? "var(--color-success)"
-      : "var(--color-danger)";
+    : anyFailed
+      ? "var(--color-danger)"
+      : "var(--color-success)";
   return (
     <div
       className="inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md hairline"
@@ -383,9 +407,9 @@ function ToolChip({ invocation }: { invocation: Invocation }) {
         <span className="text-[10px]" style={{ color: "var(--color-ink-subtle)" }}>
           · en curso
         </span>
-      ) : !ok ? (
+      ) : anyFailed ? (
         <span className="text-[10px]" style={{ color: "var(--color-danger)" }}>
-          · falló
+          · {invocation.failed} {invocation.failed === 1 ? "falló" : "fallaron"}
         </span>
       ) : null}
     </div>
