@@ -1,4 +1,5 @@
 import { createObjective } from "../../../../actions";
+import { SubmitButton } from "@/components/submit-button";
 
 export default async function NewObjectivePage({
   params,
@@ -53,13 +54,9 @@ export default async function NewObjectivePage({
             }}
           />
         </label>
-        <button
-          type="submit"
-          className="mt-2 self-start rounded-md px-4 py-2.5 text-[13px] font-medium"
-          style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
-        >
+        <SubmitButton className="mt-2 self-start" pendingLabel="Creando…">
           Crear objetivo
-        </button>
+        </SubmitButton>
       </form>
     </section>
   );

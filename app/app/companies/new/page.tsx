@@ -1,4 +1,5 @@
 import { createCompany } from "../../actions";
+import { SubmitButton } from "@/components/submit-button";
 
 export default function NewCompanyPage() {
   return (
@@ -48,13 +49,9 @@ export default function NewCompanyPage() {
           </span>
         </label>
 
-        <button
-          type="submit"
-          className="mt-2 self-start rounded-md px-4 py-2.5 text-[13px] font-medium"
-          style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
-        >
+        <SubmitButton className="mt-2 self-start" pendingLabel="Creando…">
           Crear empresa
-        </button>
+        </SubmitButton>
       </form>
     </section>
   );

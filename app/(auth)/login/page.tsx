@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { signInWithPassword } from "../actions";
 import { supabaseEnvOk } from "@/lib/supabase/env";
+import { SubmitButton } from "@/components/submit-button";
 
 export default async function LoginPage({
   searchParams,
@@ -65,13 +66,9 @@ export default async function LoginPage({
             {sp.error}
           </p>
         ) : null}
-        <button
-          type="submit"
-          className="mt-2 rounded-md px-4 py-2.5 text-[13px] font-medium"
-          style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
-        >
+        <SubmitButton className="mt-2 justify-center" pendingLabel="Ingresando…">
           Entrar
-        </button>
+        </SubmitButton>
       </form>
       <p className="mt-6 text-[13px]" style={{ color: "var(--color-ink-muted)" }}>
         ¿Todavía no tenés cuenta?{" "}

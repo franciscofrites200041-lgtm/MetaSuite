@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { SubmitButton } from "@/components/submit-button";
 
 export default async function CompanySettingsPage({
   params,
@@ -161,13 +162,9 @@ export default async function CompanySettingsPage({
           </span>
         </label>
 
-        <button
-          type="submit"
-          className="mt-2 self-start rounded-md px-4 py-2.5 text-[13px] font-medium"
-          style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
-        >
+        <SubmitButton className="mt-2 self-start" pendingLabel="Guardando…">
           Guardar cambios
-        </button>
+        </SubmitButton>
       </form>
 
       <div className="mt-16 hairline-t pt-8">

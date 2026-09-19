@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
+import { NavProgress } from "@/components/nav-progress";
 import "./globals.css";
 
 const display = Space_Grotesk({ subsets: ["latin"], variable: "--font-display", weight: ["400", "500", "600"] });
@@ -14,7 +16,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className={`${display.variable} ${body.variable} ${mono.variable}`}>
-      <body>{children}</body>
+      <body>
+        <Suspense fallback={null}>
+          <NavProgress />
+        </Suspense>
+        {children}
+      </body>
     </html>
   );
 }

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { MODELS, DEFAULT_MODEL_ID } from "@/lib/models";
 import { ObjectiveChat } from "@/components/objective-chat";
+import { SubmitButton } from "@/components/submit-button";
 import { uploadCreativeImage } from "./creative-actions";
 
 export default async function ObjectivePage({
@@ -127,13 +128,9 @@ export default async function ObjectivePage({
                 lineHeight: 1.55,
               }}
             />
-            <button
-              type="submit"
-              className="self-end rounded-md px-3 py-1.5 text-[12px] font-medium"
-              style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
-            >
+            <SubmitButton size="sm" className="self-end" pendingLabel="Guardando…">
               Guardar brief
-            </button>
+            </SubmitButton>
           </form>
         </details>
 
@@ -164,13 +161,9 @@ export default async function ObjectivePage({
                 <option value="auto">Automático (activa solo)</option>
               </select>
             </label>
-            <button
-              type="submit"
-              className="self-end rounded-md px-3 py-1.5 text-[12px] font-medium"
-              style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
-            >
+            <SubmitButton size="sm" className="self-end" pendingLabel="Guardando…">
               Guardar
-            </button>
+            </SubmitButton>
           </form>
         </details>
 
@@ -212,13 +205,9 @@ export default async function ObjectivePage({
                         required
                         className="text-[10px] file:hairline file:rounded-md file:px-2 file:py-1 file:text-[11px] file:mr-2 file:bg-[color:var(--color-canvas)] file:cursor-pointer"
                       />
-                      <button
-                        type="submit"
-                        className="rounded-md px-2 py-1 text-[11px] font-medium"
-                        style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
-                      >
+                      <SubmitButton size="sm" className="!px-2 !py-1 !text-[11px]" pendingLabel="Subiendo…">
                         Subir
-                      </button>
+                      </SubmitButton>
                     </form>
                   </div>
                 </li>

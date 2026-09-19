@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { signUpWithPassword } from "../actions";
+import { SubmitButton } from "@/components/submit-button";
 
 export default async function SignupPage({
   searchParams,
@@ -64,13 +65,9 @@ export default async function SignupPage({
             {sp.error}
           </p>
         ) : null}
-        <button
-          type="submit"
-          className="mt-2 rounded-md px-4 py-2.5 text-[13px] font-medium"
-          style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
-        >
+        <SubmitButton className="mt-2 justify-center" pendingLabel="Creando cuenta…">
           Crear cuenta
-        </button>
+        </SubmitButton>
       </form>
       <p className="mt-6 text-[13px]" style={{ color: "var(--color-ink-muted)" }}>
         ¿Ya tenés cuenta?{" "}

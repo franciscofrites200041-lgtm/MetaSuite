@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { SubmitButton } from "@/components/submit-button";
 
 export default async function AccountSettings({
   searchParams,
@@ -242,13 +243,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function SaveButton() {
   return (
-    <button
-      type="submit"
-      className="mt-2 self-start rounded-md px-4 py-2 text-[13px] font-medium"
-      style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
-    >
+    <SubmitButton className="mt-2 self-start" pendingLabel="Guardando…">
       Guardar
-    </button>
+    </SubmitButton>
   );
 }
 

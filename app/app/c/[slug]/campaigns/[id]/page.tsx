@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { publishAdInMeta } from "./ad-actions";
+import { SubmitButton } from "@/components/submit-button";
 
 export default async function CampaignPage({
   params,
@@ -207,13 +208,9 @@ export default async function CampaignPage({
                           <input type="hidden" name="ad_id" value={a.id} />
                           <input type="hidden" name="slug" value={slug} />
                           <input type="hidden" name="campaign_id" value={campaign.id} />
-                          <button
-                            type="submit"
-                            className="rounded-md px-3 py-1.5 text-[12px] font-medium"
-                            style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
-                          >
+                          <SubmitButton size="sm" pendingLabel="Publicando…">
                             Publicar ad
-                          </button>
+                          </SubmitButton>
                         </form>
                       ) : null}
                     </div>
@@ -252,26 +249,18 @@ function StatusActions({
         <form action={publish}>
           <input type="hidden" name="campaign_id" value={campaignId} />
           <input type="hidden" name="company_id" value={companyId} />
-          <button
-            type="submit"
-            className="rounded-md px-3 py-1.5 text-[12px] font-medium"
-            style={{ background: "var(--color-primary)", color: "var(--color-on-primary)" }}
-          >
+          <SubmitButton size="sm" pendingLabel="Activando…">
             Publicar
-          </button>
+          </SubmitButton>
         </form>
       ) : null}
       {status === "published" ? (
         <form action={pause}>
           <input type="hidden" name="campaign_id" value={campaignId} />
           <input type="hidden" name="company_id" value={companyId} />
-          <button
-            type="submit"
-            className="hairline rounded-md px-3 py-1.5 text-[12px]"
-            style={{ background: "var(--color-surface-2)", color: "var(--color-ink-muted)" }}
-          >
+          <SubmitButton size="sm" variant="secondary" pendingLabel="Pausando…">
             Pausar
-          </button>
+          </SubmitButton>
         </form>
       ) : null}
     </div>
