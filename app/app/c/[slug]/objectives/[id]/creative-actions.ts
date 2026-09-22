@@ -52,3 +52,17 @@ export async function uploadCreativeImage(formData: FormData) {
 
   revalidatePath(`/app/c/${slug}/objectives/${objectiveId}`);
 }
+
+export async function updateCreativeText(formData: FormData) {
+  const creativeId = String(formData.get("creative_id") ?? "");
+  const copy = String(formData.get("copy_text") ?? "").trim();
+  const prompt = String(formData.get("image_prompt") ?? "").trim() || null;
+  if (!creativeId || !copy) return;
+  const supabase = await supabaseServer();
+  await supabase
+    .from("ad_creatives")
+    .update({ copy_text: copy, image_prompt: prompt })
+    .eq("id", creativeId);
+  // ponytail: no revalidate — the client already reflects the change and
+  // this row is only used by the same page; a router.refresh is overkill.
+}

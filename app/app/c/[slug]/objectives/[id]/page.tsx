@@ -9,7 +9,8 @@ import { BriefEditor } from "@/components/brief-editor";
 import { ResizableRail } from "@/components/resizable-rail";
 import { SubmitButton } from "@/components/submit-button";
 import { DeleteButton } from "@/components/delete-button";
-import { uploadCreativeImage } from "./creative-actions";
+import { uploadCreativeImage, updateCreativeText } from "./creative-actions";
+import { CreativeCard } from "@/components/creative-card";
 
 export default async function ObjectivePage({
   params,
@@ -142,12 +143,12 @@ export default async function ObjectivePage({
                       <Image src={c.image_url} alt="Creative" width={340} height={200} className="w-full h-32 object-cover" unoptimized />
                     </div>
                   ) : null}
-                  <div className="line-clamp-3">{c.copy_text}</div>
-                  {c.image_prompt ? (
-                    <div className="mt-2 text-[11px]" style={{ color: "var(--color-ink-subtle)", fontFamily: "var(--font-mono)" }}>
-                      🖼 {c.image_prompt.slice(0, 80)}
-                    </div>
-                  ) : null}
+                  <CreativeCard
+                    creativeId={c.id}
+                    initialCopy={c.copy_text}
+                    initialPrompt={c.image_prompt}
+                    action={updateCreativeText}
+                  />
                   <div className="mt-2 flex items-center justify-between gap-2">
                     <span className="text-[10px] tracking-wider uppercase" style={{ color: "var(--color-ink-tertiary)" }}>
                       {c.status}{c.image_url ? (c.meta_image_hash ? " · listo Meta" : " · pendiente Meta") : ""}
