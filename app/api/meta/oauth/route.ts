@@ -2,18 +2,6 @@ import { NextResponse, type NextRequest } from "next/server";
 import { randomBytes } from "node:crypto";
 import { supabaseServer } from "@/lib/supabase/server";
 
-// Scopes required by our orchestrator's Meta tool calls. `email` /
-// `public_profile` add nothing (Supabase Auth already has the user's identity)
-// and lengthen the consent screen, so they're intentionally dropped.
-const SCOPES = [
-  "ads_management",
-  "ads_read",
-  "business_management",
-  "pages_show_list",
-  "pages_read_engagement",
-  "pages_manage_ads",
-].join(",");
-
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const companyId = url.searchParams.get("company_id");
@@ -29,11 +17,13 @@ export async function GET(request: NextRequest) {
 
   const appId = process.env.META_APP_ID;
   const redirectUri = process.env.META_OAUTH_REDIRECT_URI;
-  if (!appId || !redirectUri) {
+  const configId = process.env.META_LOGIN_CONFIG_ID;
+  if (!appId || !redirectUri || !configId) {
     // Instead of a bare 501 JSON, drop the user on the diagnostics page so
     // they can see exactly which env var is missing.
     const to = new URL("/app/settings/meta", url.origin);
-    to.searchParams.set("missing", !appId && !redirectUri ? "both" : !appId ? "app_id" : "redirect_uri");
+    const missing = [!appId && "app_id", !redirectUri && "redirect_uri", !configId && "config_id"].filter(Boolean);
+    to.searchParams.set("missing", missing.length > 1 ? "multiple" : (missing[0] as string));
     return NextResponse.redirect(to);
   }
 
@@ -41,7 +31,15 @@ export async function GET(request: NextRequest) {
   const fbUrl = new URL("https://www.facebook.com/v21.0/dialog/oauth");
   fbUrl.searchParams.set("client_id", appId);
   fbUrl.searchParams.set("redirect_uri", redirectUri);
-  fbUrl.searchParams.set("scope", SCOPES);
+  // Business-asset permissions (ads_management, business_management,
+  // pages_manage_ads, ...) can't be requested with a raw `scope` param on
+  // Meta's classic OAuth dialog anymore — Meta rejects them as "Invalid
+  // Scopes". They must go through Facebook Login for Business, which bundles
+  // the permission set into a saved Configuration and references it by
+  // config_id instead. Create that Configuration in the Facebook App
+  // dashboard (Products → Facebook Login for Business → Configurations) and
+  // put its id in META_LOGIN_CONFIG_ID.
+  fbUrl.searchParams.set("config_id", configId);
   fbUrl.searchParams.set("state", state);
   fbUrl.searchParams.set("response_type", "code");
 

@@ -16,6 +16,7 @@ export default async function MetaSettingsPage() {
   const appId = process.env.META_APP_ID ?? "";
   const appSecret = process.env.META_APP_SECRET ?? "";
   const redirectUri = process.env.META_OAUTH_REDIRECT_URI ?? "";
+  const configId = process.env.META_LOGIN_CONFIG_ID ?? "";
   const encKey = process.env.META_TOKEN_ENC_KEY ?? "";
   const publicAppUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
@@ -30,10 +31,12 @@ export default async function MetaSettingsPage() {
 
   // Full OAuth URL that would be constructed on "Conectar Meta Ads". Users
   // can copy this into a browser to see the exact error Facebook returns
-  // without going through the app.
-  const scopes = "ads_management,ads_read,business_management,pages_show_list,pages_read_engagement,pages_manage_ads";
-  const oauthUrl = appId && redirectUri
-    ? `https://www.facebook.com/v21.0/dialog/oauth?client_id=${encodeURIComponent(appId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&response_type=code&state=DIAGNOSTIC`
+  // without going through the app. Business-asset permissions (ads_*,
+  // business_management, pages_*) can't be requested as a raw `scope` param
+  // anymore — Meta rejects them as "Invalid Scopes". They have to go through
+  // Facebook Login for Business via config_id (see checklist item 6 below).
+  const oauthUrl = appId && redirectUri && configId
+    ? `https://www.facebook.com/v21.0/dialog/oauth?client_id=${encodeURIComponent(appId)}&redirect_uri=${encodeURIComponent(redirectUri)}&config_id=${encodeURIComponent(configId)}&response_type=code&state=DIAGNOSTIC`
     : null;
 
   const supabase = await supabaseServer();
@@ -66,6 +69,7 @@ export default async function MetaSettingsPage() {
           <EnvRow name="META_APP_ID" value={appId} kind="public" hint="Se ve. Es tu App ID de la Facebook App." />
           <EnvRow name="META_APP_SECRET" value={appSecret} kind="secret" hint="No se muestra. Es el App Secret de la Facebook App." />
           <EnvRow name="META_OAUTH_REDIRECT_URI" value={redirectUri} kind="public" hint="Se ve. Debe matchear exacto la que ponés en el panel FB." />
+          <EnvRow name="META_LOGIN_CONFIG_ID" value={configId} kind="public" hint="Se ve. El ID de la Configuration que creás en Facebook Login for Business (punto 6 del checklist)." />
           <EnvRow name="META_TOKEN_ENC_KEY" value={encKey} kind="secret" hint="No se muestra. 32 bytes hex (openssl rand -hex 32) para cifrar tokens." />
           <EnvRow name="NEXT_PUBLIC_APP_URL" value={publicAppUrl} kind="public" hint="URL pública de la app. Debe matchear el origin actual." />
 
@@ -153,7 +157,7 @@ export default async function MetaSettingsPage() {
         <Section title="5. Checklist del panel de Facebook Developer">
           <ol className="text-[13px] space-y-3 pl-5 list-decimal" style={{ color: "var(--color-ink-muted)" }}>
             <li>
-              <strong>Tipo de app: Consumer.</strong> Business no expone Facebook Login clásico. Si tu app actual es Business, creá una nueva Consumer.
+              <strong>Tipo de app: Business.</strong> Los permisos de ads_management, business_management y pages_* solo se piden vía Facebook Login for Business, que requiere app tipo Business (no Consumer).
             </li>
             <li>
               <strong>App Roles → Administrators</strong>: agregate a vos mismo. Sin esto, ni siquiera vos podés loguear en dev mode.
@@ -177,13 +181,19 @@ export default async function MetaSettingsPage() {
               <code style={{ fontFamily: "var(--font-mono)" }}>business_management</code>,{" "}
               <code style={{ fontFamily: "var(--font-mono)" }}>pages_show_list</code>,{" "}
               <code style={{ fontFamily: "var(--font-mono)" }}>pages_read_engagement</code>,{" "}
-              <code style={{ fontFamily: "var(--font-mono)" }}>pages_manage_ads</code>.
+              <code style={{ fontFamily: "var(--font-mono)" }}>pages_manage_ads</code>. Al guardarla, Facebook te muestra un{" "}
+              <strong>Configuration ID</strong> numérico (también lo ves en la lista de Configurations). Copialo — es el{" "}
+              <code style={{ fontFamily: "var(--font-mono)" }}>META_LOGIN_CONFIG_ID</code> que falta en la sección 1. Sin este
+              paso, Facebook devuelve <em>&quot;Invalid Scopes&quot;</em> apenas tocás &quot;Conectar Meta Ads&quot;.
             </li>
             <li>
               <strong>App Review → Permissions and Features</strong>: en Dev mode no hace falta. Los admins/testers pueden usar todos los permisos con Standard Access. NO completes Business Verification hasta que quieras salir de Dev.
             </li>
             <li>
-              <strong>Copiá App ID + App Secret</strong> a Vercel → Environment Variables como <code style={{ fontFamily: "var(--font-mono)" }}>META_APP_ID</code> y <code style={{ fontFamily: "var(--font-mono)" }}>META_APP_SECRET</code>. Redeploy.
+              <strong>Copiá App ID + App Secret + Configuration ID</strong> a Vercel → Environment Variables como{" "}
+              <code style={{ fontFamily: "var(--font-mono)" }}>META_APP_ID</code>,{" "}
+              <code style={{ fontFamily: "var(--font-mono)" }}>META_APP_SECRET</code> y{" "}
+              <code style={{ fontFamily: "var(--font-mono)" }}>META_LOGIN_CONFIG_ID</code>. Redeploy.
             </li>
           </ol>
         </Section>
