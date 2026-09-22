@@ -26,7 +26,7 @@ export default async function MetaSettingsPage() {
   // Live probe of Meta's Graph API to verify the app_id is registered and
   // reachable. Anonymous endpoint — doesn't need a token. If this fails we
   // know the problem is on Meta's side (app disabled, wrong id, etc).
-  const probe = await probeMetaApp(appId);
+  const probe = await probeMetaApp(appId, appSecret);
 
   // Full OAuth URL that would be constructed on "Conectar Meta Ads". Users
   // can copy this into a browser to see the exact error Facebook returns
@@ -118,9 +118,15 @@ export default async function MetaSettingsPage() {
                 <span style={{ color: "var(--color-danger)" }}>Meta no reconoce este app_id</span>
               </div>
               <div style={{ color: "var(--color-ink-muted)" }}>{probe.error}</div>
-              <p className="text-[12px] mt-2" style={{ color: "var(--color-ink-subtle)" }}>
-                Posibles causas: app deshabilitada en el panel de FB, app_id mal copiado (¿confundiste app_id con app_secret?), o la app está en modo Development y todavía no la publicaste.
-              </p>
+              {!appSecret ? (
+                <p className="text-[12px] mt-1" style={{ color: "var(--color-warning)" }}>
+                  Ojo: falta <code style={{ fontFamily: "var(--font-mono)" }}>META_APP_SECRET</code>, así que esta prueba se hizo sin firmar (anónima) — Graph API rechaza casi cualquier consulta al nodo de la app sin token, incluso si el app_id es correcto. Cargá el secret arriba para que este resultado sea confiable.
+                </p>
+              ) : (
+                <p className="text-[12px] mt-2" style={{ color: "var(--color-ink-subtle)" }}>
+                  Posibles causas: app deshabilitada en el panel de FB, app_id o app_secret mal copiado (¿los mezclaste?), o el par app_id/app_secret no corresponde a la misma app.
+                </p>
+              )}
             </div>
           )}
         </Section>
@@ -242,17 +248,18 @@ type Probe =
   | { ok: false; error: string };
 
 // Server-side ping to Meta's Graph API to check that META_APP_ID actually
-// points at a registered, enabled app. Anonymous — no token needed. Meta
-// returns app metadata for public app IDs, or an error object if the id is
-// invalid / the app was disabled. This tells us in one call whether the
-// problem is on our env-var side or on Meta's console side.
-async function probeMetaApp(appId: string): Promise<Probe | null> {
+// points at a registered, enabled app. The /{app-id} node isn't publicly
+// readable without a token — even for perfectly valid apps — so we sign the
+// request with the app access token (app_id|app_secret) instead of going
+// fully anonymous. Meta returns app metadata for a registered app, or an
+// error object if the id/secret pair is wrong or the app was disabled.
+async function probeMetaApp(appId: string, appSecret: string): Promise<Probe | null> {
   if (!appId) return null;
   try {
-    const res = await fetch(
-      `https://graph.facebook.com/v21.0/${encodeURIComponent(appId)}?fields=name,category,link`,
-      { cache: "no-store" }
-    );
+    const url = new URL(`https://graph.facebook.com/v21.0/${encodeURIComponent(appId)}`);
+    url.searchParams.set("fields", "name,category,link");
+    if (appSecret) url.searchParams.set("access_token", `${appId}|${appSecret}`);
+    const res = await fetch(url, { cache: "no-store" });
     const json = (await res.json()) as { name?: string; category?: string; link?: string; error?: { message: string } };
     if (json.error) return { ok: false, error: json.error.message };
     if (!json.name) return { ok: false, error: "Meta no devolvió metadata para este app_id" };
