@@ -23,8 +23,11 @@ export async function createCompany(formData: FormData) {
   const industry = String(formData.get("industry") ?? "").trim() || null;
   const description = String(formData.get("description") ?? "").trim() || null;
   const websiteUrl = String(formData.get("website_url") ?? "").trim() || null;
+  const mapsUrl = String(formData.get("google_maps_url") ?? "").trim() || null;
+  const hasPhysical = formData.get("has_physical_location") === "on";
   const logoFile = formData.get("logo") as File | null;
   if (!name) redirect("/app/companies/new?error=nombre");
+  if (!websiteUrl) redirect("/app/companies/new?error=website_requerido");
 
   const supabase = await supabaseServer();
   const { data: user } = await supabase.auth.getUser();
@@ -53,13 +56,15 @@ export async function createCompany(formData: FormData) {
     slug = `${baseSlug}-${i}`;
   }
 
-  const insertPayload: Record<string, string | null> = {
+  const insertPayload: Record<string, string | boolean | null> = {
     account_id: accountId,
     name,
     slug,
     industry,
     description,
     website_url: websiteUrl,
+    google_maps_url: mapsUrl,
+    has_physical_location: hasPhysical,
   };
 
   const { data: created, error } = await supabase
@@ -88,6 +93,18 @@ export async function createCompany(formData: FormData) {
       }
     }
   }
+
+  // Seed the analysis row so the company page can render "Analizando…"
+  // instantly and start polling. Actual pipeline fires in the background.
+  await supabase.from("company_analysis").insert({ company_id: created!.id, status: "pending" });
+
+  // Fire-and-forget the analysis. Using void + import here so the redirect
+  // below happens instantly and the LLM/scraper work continues in the
+  // request-serving function. Vercel Functions keep running after the
+  // response is sent, up to the function timeout.
+  // ponytail: fire-and-forget in the same function; move to a queue if we
+  // ever need survivability across cold starts.
+  void import("@/lib/analysis/runner").then((m) => m.runCompanyAnalysis(created!.id));
 
   revalidatePath("/app");
   redirect(`/app/c/${created!.slug}`);

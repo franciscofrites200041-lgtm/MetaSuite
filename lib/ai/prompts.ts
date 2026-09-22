@@ -8,6 +8,7 @@ export function orchestratorSystemPrompt(input: {
   companyIndustry: string | null;
   companyDescription: string | null;
   companyWebsiteUrl: string | null;
+  companyBriefGeneral: string | null;
   objectiveTitle: string;
   briefMd: string;
   publishMode: "auto" | "approval";
@@ -27,6 +28,8 @@ Tu misión: ayudar al usuario a llevar un objetivo publicitario desde la idea ha
 - Industria: ${input.companyIndustry ?? "sin definir"}
 - Descripción: ${input.companyDescription ?? "sin descripción"}
 - Sitio web (landing de los ads): ${input.companyWebsiteUrl ?? "SIN CARGAR"}
+
+${input.companyBriefGeneral ? `## Brief general (generado desde el sitio + Google Maps)\n${input.companyBriefGeneral}\n` : ""}
 
 # Objetivo
 - Título: ${input.objectiveTitle}

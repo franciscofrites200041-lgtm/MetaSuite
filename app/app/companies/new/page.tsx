@@ -31,9 +31,27 @@ export default function NewCompanyPage() {
           label="Sitio web"
           name="website_url"
           type="url"
+          required
           placeholder="https://tu-sitio.com"
-          hint="Meta lo usa como landing en cada ad. Obligatorio antes de publicar."
+          hint="La IA scrapea el site para armar el brief general y analizar SEO. También va como landing de cada ad."
         />
+        <Field
+          label="Google Maps"
+          name="google_maps_url"
+          type="url"
+          placeholder="https://maps.app.goo.gl/... o link directo de Maps"
+          hint="Link 'Compartir' del negocio en Google Maps. La IA lo usa para el análisis GEO (rating, reviews, completitud del perfil). Dejalo vacío si el negocio es 100% online."
+        />
+        <label className="flex items-center gap-2 text-[12px]" style={{ color: "var(--color-ink-muted)" }}>
+          <input
+            type="checkbox"
+            name="has_physical_location"
+            defaultChecked
+            className="h-3.5 w-3.5"
+            style={{ accentColor: "var(--color-primary)" }}
+          />
+          Tiene local físico (activa el análisis GEO)
+        </label>
         <label className="flex flex-col gap-1.5">
           <span className="text-[12px]" style={{ color: "var(--color-ink-muted)" }}>
             Logo (opcional)

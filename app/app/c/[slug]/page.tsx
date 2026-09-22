@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
+import { AnalysisCards, type AnalysisRow } from "@/components/analysis-cards";
 
 export default async function CompanyDashboard({
   params,
@@ -15,12 +16,12 @@ export default async function CompanyDashboard({
 
   const { data: company } = await supabase
     .from("companies")
-    .select("id, name, slug, industry, description")
+    .select("id, name, slug, industry, description, has_physical_location, brief_general_md")
     .eq("slug", slug)
     .maybeSingle();
   if (!company) notFound();
 
-  const [{ data: metaConn }, { data: objectives }] = await Promise.all([
+  const [{ data: metaConn }, { data: objectives }, { data: analysis }] = await Promise.all([
     supabase
       .from("meta_connections")
       .select("id, meta_ad_account_id, meta_page_id, status, token_expires_at")
@@ -31,7 +32,27 @@ export default async function CompanyDashboard({
       .select("id, title, status, updated_at")
       .eq("company_id", company.id)
       .order("updated_at", { ascending: false }),
+    supabase
+      .from("company_analysis")
+      .select("status, seo_score, seo_summary, seo_recommendations, geo_score, geo_summary, geo_recommendations, last_error")
+      .eq("company_id", company.id)
+      .maybeSingle(),
   ]);
+
+  const analysisRow: AnalysisRow | null = analysis
+    ? {
+        status: analysis.status as AnalysisRow["status"],
+        seo_score: analysis.seo_score,
+        seo_summary: analysis.seo_summary,
+        seo_recommendations: analysis.seo_recommendations as AnalysisRow["seo_recommendations"],
+        geo_score: analysis.geo_score,
+        geo_summary: analysis.geo_summary,
+        geo_recommendations: analysis.geo_recommendations as AnalysisRow["geo_recommendations"],
+        last_error: analysis.last_error,
+        brief_general_md: company.brief_general_md,
+        has_physical_location: company.has_physical_location,
+      }
+    : null;
 
   return (
     <section className="max-w-[1080px] mx-auto px-10 pt-12 pb-24">
@@ -52,6 +73,13 @@ export default async function CompanyDashboard({
             style={{ color: "var(--color-primary)" }}
           >
             Dashboard
+          </Link>
+          <Link
+            href={`/app/c/${company.slug}/analysis`}
+            className="text-[12px]"
+            style={{ color: "var(--color-primary)" }}
+          >
+            Análisis
           </Link>
           <Link
             href={`/app/c/${company.slug}/settings`}
@@ -86,6 +114,8 @@ export default async function CompanyDashboard({
           <span style={{ fontFamily: "var(--font-mono)" }}>{metaConn?.meta_ad_account_id}</span>
         </div>
       ) : null}
+
+      {analysisRow ? <AnalysisCards slug={company.slug} initial={analysisRow} /> : null}
 
       <div className="hairline rounded-lg" style={{ background: "var(--color-surface-1)" }}>
         <header className="flex items-center justify-between px-6 py-4 hairline-b">
