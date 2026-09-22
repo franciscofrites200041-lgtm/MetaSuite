@@ -1,7 +1,18 @@
 import { createCompany } from "../../actions";
 import { SubmitButton } from "@/components/submit-button";
 
-export default function NewCompanyPage() {
+const ERROR_MESSAGES: Record<string, string> = {
+  nombre: "Falta el nombre de la empresa.",
+  website_requerido: "Falta la URL del sitio web.",
+  no_account: "Tu usuario no tiene una cuenta asociada todavía, así que no se pudo crear la empresa. Este es un problema del lado del servidor — contactá soporte o probá cerrar sesión y volver a entrar.",
+};
+
+export default async function NewCompanyPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
   return (
     <section className="max-w-[720px] mx-auto px-10 pt-14 pb-24">
       <p className="mb-2 text-[11px] tracking-[0.14em] uppercase" style={{ color: "var(--color-ink-subtle)" }}>
@@ -17,6 +28,18 @@ export default function NewCompanyPage() {
         Estos datos van al system prompt de la IA en cada conversación y al `object_story_spec`
         de cada ad. Cargarlos ahora te evita volver dos veces.
       </p>
+
+      {error ? (
+        <div
+          className="mb-6 hairline rounded-md px-4 py-3 text-[13px]"
+          style={{
+            background: "color-mix(in oklab, var(--color-danger) 8%, var(--color-surface-1))",
+            color: "var(--color-danger)",
+          }}
+        >
+          {ERROR_MESSAGES[error] ?? `No se pudo crear la empresa: ${error}`}
+        </div>
+      ) : null}
 
       <form action={createCompany} className="flex flex-col gap-5" encType="multipart/form-data">
         <Field label="Nombre" name="name" required placeholder="Toruk Technologies" />
